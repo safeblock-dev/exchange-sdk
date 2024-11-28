@@ -1,0 +1,489 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "endpoint",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "inputs": [],
+    "name": "LayerZeroFacet_FeeNotMet",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "LayerZeroFacet_LengthMismatch",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "sender",
+        "type": "address"
+      }
+    ],
+    "name": "Ownable_SenderIsNotOwner",
+    "type": "error"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "previousOwner",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "newOwner",
+        "type": "address"
+      }
+    ],
+    "name": "OwnershipTransferred",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint32",
+            "name": "srcEid",
+            "type": "uint32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "sender",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint64",
+            "name": "nonce",
+            "type": "uint64"
+          }
+        ],
+        "internalType": "struct Origin",
+        "name": "origin",
+        "type": "tuple"
+      }
+    ],
+    "name": "allowInitializePath",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "defaultGasLimit",
+    "outputs": [
+      {
+        "internalType": "uint128",
+        "name": "",
+        "type": "uint128"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "eid",
+    "outputs": [
+      {
+        "internalType": "uint32",
+        "name": "",
+        "type": "uint32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint32",
+        "name": "dstEid",
+        "type": "uint32"
+      },
+      {
+        "internalType": "uint128",
+        "name": "nativeAmount",
+        "type": "uint128"
+      },
+      {
+        "internalType": "address",
+        "name": "to",
+        "type": "address"
+      }
+    ],
+    "name": "estimateFee",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "nativeFee",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getDelegate",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint32",
+        "name": "dstEid",
+        "type": "uint32"
+      }
+    ],
+    "name": "getGasLimit",
+    "outputs": [
+      {
+        "internalType": "uint128",
+        "name": "gasLimit",
+        "type": "uint128"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint32",
+        "name": "remoteEid",
+        "type": "uint32"
+      }
+    ],
+    "name": "getNativeSendCap",
+    "outputs": [
+      {
+        "internalType": "uint128",
+        "name": "nativeCap",
+        "type": "uint128"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint32",
+        "name": "dstEid",
+        "type": "uint32"
+      }
+    ],
+    "name": "getPeer",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "trustedRemote",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "lib",
+        "type": "address"
+      },
+      {
+        "internalType": "uint32",
+        "name": "remoteEid",
+        "type": "uint32"
+      }
+    ],
+    "name": "getUlnConfig",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint64",
+            "name": "confirmations",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint8",
+            "name": "requiredDVNCount",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint8",
+            "name": "optionalDVNCount",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint8",
+            "name": "optionalDVNThreshold",
+            "type": "uint8"
+          },
+          {
+            "internalType": "address[]",
+            "name": "requiredDVNs",
+            "type": "address[]"
+          },
+          {
+            "internalType": "address[]",
+            "name": "optionalDVNs",
+            "type": "address[]"
+          }
+        ],
+        "internalType": "struct UlnConfig",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint32",
+        "name": "remoteEid",
+        "type": "uint32"
+      }
+    ],
+    "name": "isSupportedEid",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint32",
+            "name": "srcEid",
+            "type": "uint32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "sender",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint64",
+            "name": "nonce",
+            "type": "uint64"
+          }
+        ],
+        "internalType": "struct Origin",
+        "name": "",
+        "type": "tuple"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "bytes",
+        "name": "",
+        "type": "bytes"
+      },
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      },
+      {
+        "internalType": "bytes",
+        "name": "",
+        "type": "bytes"
+      }
+    ],
+    "name": "lzReceive",
+    "outputs": [],
+    "stateMutability": "pure",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint32",
+        "name": "",
+        "type": "uint32"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "name": "nextNonce",
+    "outputs": [
+      {
+        "internalType": "uint64",
+        "name": "",
+        "type": "uint64"
+      }
+    ],
+    "stateMutability": "pure",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "owner",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint32",
+        "name": "dstEid",
+        "type": "uint32"
+      },
+      {
+        "internalType": "uint128",
+        "name": "nativeDrop",
+        "type": "uint128"
+      },
+      {
+        "internalType": "address",
+        "name": "to",
+        "type": "address"
+      }
+    ],
+    "name": "sendDeposit",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint128",
+        "name": "defaultGasLimit_",
+        "type": "uint128"
+      }
+    ],
+    "name": "setDefaultGasLimit",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "delegate",
+        "type": "address"
+      }
+    ],
+    "name": "setDelegate",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint32[]",
+        "name": "remoteEids",
+        "type": "uint32[]"
+      },
+      {
+        "internalType": "uint128[]",
+        "name": "gasLimits",
+        "type": "uint128[]"
+      }
+    ],
+    "name": "setGasLimit",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint32[]",
+        "name": "remoteEids",
+        "type": "uint32[]"
+      },
+      {
+        "internalType": "bytes32[]",
+        "name": "remoteAddresses",
+        "type": "bytes32[]"
+      }
+    ],
+    "name": "setPeers",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "lib",
+        "type": "address"
+      },
+      {
+        "internalType": "uint64",
+        "name": "confirmations",
+        "type": "uint64"
+      },
+      {
+        "internalType": "uint32[]",
+        "name": "eids",
+        "type": "uint32[]"
+      },
+      {
+        "internalType": "address",
+        "name": "dvn",
+        "type": "address"
+      }
+    ],
+    "name": "setUlnConfigs",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]

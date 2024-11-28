@@ -1,0 +1,46 @@
+{
+  "name": "@safeblock/exchange-sdk",
+  "version": "0.0.0",
+  "description": "Exchange SDK",
+  "main": "dist/index.js",
+  "typings": "dist/index.d.ts",
+  "scripts": {
+    "test": "vitest run --reporter=verbose",
+    "typechain": "npx typechain --target ethers-v6 --out-dir src/abis/types 'src/abis/*.json'"
+  },
+  "keywords": [
+    "web3",
+    "crypto",
+    "ton",
+    "ethereum",
+    "tron"
+  ],
+  "author": "SafeBlock",
+  "license": "CC BY-NC-SA 4.0",
+  "devDependencies": {
+    "@typechain/ethers-v6": "^0.5.1",
+    "typechain": "^8.3.2",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.6"
+  },
+  "files": [
+    "dist"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/safeblock-dev/exchange-sdk.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "bugs": {
+    "url": "https://github.com/safeblock-dev/exchange-sdk/issues"
+  },
+  "homepage": "https://github.com/safeblock-dev/exchange-sdk#readme",
+  "dependencies": {
+    "@safeblock/blockchain-utils": "^0.1.6",
+    "@ston-fi/sdk": "^2.0.1",
+    "@ton/ton": "^15.1.0",
+    "ethers": "^6.13.4"
+  }
+}

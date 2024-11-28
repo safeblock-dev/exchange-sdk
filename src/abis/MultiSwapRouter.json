@@ -1,0 +1,386 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "wrappedNative_",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "implementation",
+        "type": "address"
+      }
+    ],
+    "name": "ERC1967_InvalidImplementation",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidInitialization",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NotInitializing",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "caller",
+        "type": "address"
+      }
+    ],
+    "name": "Ownable_CallerIsNotTheNewOwner",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "Ownable_NewOwnerCannotBeAddressZero",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "sender",
+        "type": "address"
+      }
+    ],
+    "name": "Ownable_SenderIsNotOwner",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "R",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "T",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "UUPSUnauthorizedCallContext",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "slot",
+        "type": "bytes32"
+      }
+    ],
+    "name": "UUPSUnsupportedProxiableUUID",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "UniswapV2_InsufficientInputAmount",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "UniswapV2_InsufficientOutputAmount",
+    "type": "error"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint8",
+        "name": "version",
+        "type": "uint8"
+      }
+    ],
+    "name": "Initialized",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "previousOwner",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "newOwner",
+        "type": "address"
+      }
+    ],
+    "name": "OwnershipTransferStarted",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "previousOwner",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "newOwner",
+        "type": "address"
+      }
+    ],
+    "name": "OwnershipTransferred",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "implementation",
+        "type": "address"
+      }
+    ],
+    "name": "Upgraded",
+    "type": "event"
+  },
+  {
+    "inputs": [],
+    "name": "acceptOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "newOwner",
+        "type": "address"
+      }
+    ],
+    "name": "initialize",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "amountIn",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "minAmountOut",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "tokenIn",
+            "type": "address"
+          },
+          {
+            "internalType": "bytes32[]",
+            "name": "pairs",
+            "type": "bytes32[]"
+          }
+        ],
+        "internalType": "struct IMultiswapRouterFacet.MultiswapCalldata",
+        "name": "data",
+        "type": "tuple"
+      }
+    ],
+    "name": "multiswap",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "amountIn",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "minAmountOut",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "tokenIn",
+            "type": "address"
+          },
+          {
+            "internalType": "bytes32[]",
+            "name": "pairs",
+            "type": "bytes32[]"
+          }
+        ],
+        "internalType": "struct IMultiswapRouterFacet.MultiswapCalldata",
+        "name": "data",
+        "type": "tuple"
+      }
+    ],
+    "name": "multiswapReverse",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "owner",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "fullAmount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "minAmountOut",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "tokenIn",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "tokenOut",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256[]",
+            "name": "amountsIn",
+            "type": "uint256[]"
+          },
+          {
+            "internalType": "bytes32[]",
+            "name": "pairs",
+            "type": "bytes32[]"
+          }
+        ],
+        "internalType": "struct IMultiswapRouterFacet.PartswapCalldata",
+        "name": "data",
+        "type": "tuple"
+      }
+    ],
+    "name": "partswap",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "pendingOwner",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "proxiableUUID",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "renounceOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "newOwner",
+        "type": "address"
+      }
+    ],
+    "name": "transferOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "newImplementation",
+        "type": "address"
+      }
+    ],
+    "name": "upgradeTo",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]
