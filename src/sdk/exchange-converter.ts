@@ -22,7 +22,7 @@ export default abstract class ExchangeConverter {
   protected async rerouteCrossChainRoutesFetch(request: ExchangeRequest, zeroAddress: Address, taskId: symbol) {
     if (!this.isCrossChain(request)) return null
 
-    const transaction = await this.createMultiChainTransaction(Address.from(Address.tonBounceableNativeAddress), request, taskId)
+    const transaction = await this.createMultiChainTransaction(zeroAddress, request, taskId)
 
     if (transaction instanceof Error) return transaction
 
