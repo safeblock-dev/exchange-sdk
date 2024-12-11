@@ -16,6 +16,7 @@ export default class PriceStorage {
   #workerInterval: any
   #currentFetchingTask = Symbol()
   #initialFetchFinished = false
+  #updateListeners: Function[] = []
 
   constructor(private readonly tokensList: TokensList, private readonly updateInterval: number = 6000) {
     this.#prices = new Map()
@@ -27,6 +28,14 @@ export default class PriceStorage {
       this.setupWorkerInterval()
       this.#initialFetchFinished = true
     })
+  }
+
+  public addUpdateListener(callback: Function) {
+    this.#updateListeners.push(callback)
+  }
+
+  public removeUpdateListener(callback: Function) {
+    this.#updateListeners = this.#updateListeners.filter(cb => cb.toString() !== callback.toString())
   }
 
   public async waitInitialFetch() {
@@ -60,7 +69,7 @@ export default class PriceStorage {
 
     if (!ratesList) return
 
-    Object.entries(ratesList.rates).forEach(([ jettonAddress, data ]) => {
+    Object.entries(ratesList.rates).forEach(([jettonAddress, data]) => {
       const jetton = this.tokensList.get(ton, Address.from(jettonAddress))
       if (!jetton) return
 
@@ -102,7 +111,7 @@ export default class PriceStorage {
 
     let rates = await ArrayUtils.asyncNonNullable(
       ArrayUtils.asyncMap(
-        multicall<[ BigInt ]>(network, requests),
+        multicall<[BigInt]>(network, requests),
         (response) => {
           if (!response.data) return null
 
@@ -156,7 +165,7 @@ export default class PriceStorage {
     return Promise.all(this.tokensList.networks.map(network => this.fetchTokenPrices(network, task).catch(() => null))).finally(() => {
       this.#fetchingPrices = false
       this.#updateTimestamp = Date.now()
-    })
+    }).finally(() => this.#updateListeners.map(cb => cb()))
   }
 
   public async forceRefetch() {
