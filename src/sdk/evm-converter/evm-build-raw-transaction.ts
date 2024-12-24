@@ -30,13 +30,10 @@ export default async function evmBuildRawTransaction(from: Address, route: Simul
 
   if (Address.isZero(route.tokenOut.address)) {
     transferData = transferFaucetIface.encodeFunctionData("unwrapNativeAndTransferTo", [
-      destinationAddress.toString(),
-      0
+      destinationAddress.toString()
     ])
   } else {
     transferData = transferFaucetIface.encodeFunctionData("transferToken", [
-      route.tokenOut.address.toString(),
-      0,
       destinationAddress.toString()
     ])
   }
@@ -44,7 +41,7 @@ export default async function evmBuildRawTransaction(from: Address, route: Simul
   const entryPointIface = Entrypoint__factory.createInterface()
 
   const multiCallData = entryPointIface.encodeFunctionData("multicall(bytes32,bytes[])", [
-    "0x0000000000000000000000000000000000000000000000000000000000000024",
+    "0x0000000000000000000000000000000000000000000000000000000000000000",
     [
       multiSwapData,
       transferData

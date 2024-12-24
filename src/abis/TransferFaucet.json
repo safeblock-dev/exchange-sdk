@@ -5,10 +5,25 @@
         "internalType": "address",
         "name": "wrappedNative",
         "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "permit2",
+        "type": "address"
       }
     ],
     "stateMutability": "nonpayable",
     "type": "constructor"
+  },
+  {
+    "inputs": [],
+    "name": "TransferFacet_TransferFromFailed",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "TransferHelper_GetBalanceError",
+    "type": "error"
   },
   {
     "inputs": [],
@@ -21,27 +36,27 @@
     "type": "error"
   },
   {
+    "inputs": [],
+    "name": "TransientStorageFacetLibrary_InvalidSenderAddress",
+    "type": "error"
+  },
+  {
     "inputs": [
       {
         "internalType": "address",
-        "name": "to",
+        "name": "user",
         "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "amount",
-        "type": "uint256"
       }
     ],
-    "name": "transferNative",
+    "name": "getNonceForPermit2",
     "outputs": [
       {
         "internalType": "uint256",
-        "name": "",
+        "name": "nonce",
         "type": "uint256"
       }
     ],
-    "stateMutability": "nonpayable",
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -56,6 +71,35 @@
         "name": "amount",
         "type": "uint256"
       },
+      {
+        "internalType": "uint256",
+        "name": "nonce",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "deadline",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bytes",
+        "name": "signature",
+        "type": "bytes"
+      }
+    ],
+    "name": "transferFromPermit2",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
       {
         "internalType": "address",
         "name": "to",
@@ -76,33 +120,9 @@
   {
     "inputs": [
       {
-        "internalType": "uint256",
-        "name": "amount",
-        "type": "uint256"
-      }
-    ],
-    "name": "unwrapNative",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
         "internalType": "address",
         "name": "to",
         "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "amount",
-        "type": "uint256"
       }
     ],
     "name": "unwrapNativeAndTransferTo",

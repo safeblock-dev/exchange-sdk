@@ -228,8 +228,6 @@ export default class EvmCrossChainExtension {
     if (arrivalGas) nativeAmount = nativeAmount.plus(arrivalGas.nativeAmount.toString())
 
     const transferData = transferFaucetIface.encodeFunctionData("transferToken", [
-      fromNetworkUSDT.address.toString(),
-      0,
       Address.from(request.destinationAddress || from || Address.zeroAddress).toString()
     ])
 
@@ -247,8 +245,8 @@ export default class EvmCrossChainExtension {
     sourceNetworkCallData.push(transferData)
 
     const callOffset = sourceNetworkCallData.length > 2
-      ? "0x0000000000000000000000000000000000000000000000000000000000240044"
-      : "0x0000000000000000000000000000000000000000000000000000000000000024"
+      ? "0x0000000000000000000000000000000000000000000000000000000000000044"
+      : "0x0000000000000000000000000000000000000000000000000000000000000000"
 
     if (arrivalGas && arrivalGas.nativeAmount.gt(0)) {
       const lzIface = LayerZero__factory.createInterface()
