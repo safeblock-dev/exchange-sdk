@@ -67,12 +67,12 @@ function stargateNetworksMapping(network: Network) {
 
 function apiNetworkNamesMapping(network: Network) {
   const map: Record<string, string> = {
-    [mainnet.name]: "NETWORK_ETH",
-    [bnb.name]: "NETWORK_BSC",
-    [matic.name]: "NETWORK_POL",
-    [avalanche.name]: "NETWORK_AVAX",
-    [arbitrum.name]: "NETWORK_ARB",
-    [optimism.name]: "NETWORK_OP"
+    [mainnet.name]: "NETWORK_ETHEREUM",
+    [bnb.name]: "NETWORK_BINANCE",
+    [matic.name]: "NETWORK_POLYGON",
+    [avalanche.name]: "NETWORK_AVALANCHE",
+    [arbitrum.name]: "NETWORK_ARBITRUM",
+    [optimism.name]: "NETWORK_OPTIMISM"
   }
 
   return map[network.name] ?? "NETWORK_UNSPECIFIED"
