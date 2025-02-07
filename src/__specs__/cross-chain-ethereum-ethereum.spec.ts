@@ -1,5 +1,5 @@
 import { Address, Amount } from "@safeblock/blockchain-utils"
-import { bnbDAI, mainnetUSDT, maticUSDC, maticUSDT, sdkConfig } from "./utils/sdk-test-config"
+import { bnbDAI, bnbUSDT, maticUSDC, maticUSDT, sdkConfig } from "./utils/sdk-test-config"
 import SafeBlockSDK from "~/sdk"
 import { ExchangeRequest, SimulatedRoute } from "~/types"
 import { describe, it, expect } from "vitest"
@@ -9,9 +9,9 @@ describe("Cross chain exchanges from Ethereum to Ethereum", async () => {
 
   const usdtTokenRequest: ExchangeRequest = {
     exactInput: true,
-    amountIn: new Amount(10, mainnetUSDT.decimals, true),
+    amountIn: new Amount(10, bnbUSDT.decimals, true),
     amountOut: new Amount(0, maticUSDC.decimals, true),
-    tokenIn: mainnetUSDT,
+    tokenIn: bnbUSDT,
     tokenOut: maticUSDC,
     slippageReadablePercent: 1
   }
