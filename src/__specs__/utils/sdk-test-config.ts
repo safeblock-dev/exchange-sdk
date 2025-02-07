@@ -59,9 +59,6 @@ const sdkConfig: SdkConfig = {
   backend: {
     url: "https://api.safeblock.com"
   },
-  tonClient: {
-    endpoint: "https://toncenter.com/api/v2/jsonRPC"
-  },
   priceStorage: {
     updateInterval: 10_000
   }
