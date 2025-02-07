@@ -86,7 +86,9 @@ const request = {
   /* Same as in previous example */
 }
 
-const quota = await sdk.createQuota(Address.from("0xYourAddress"), request)
+const task = sdk.updateTask()
+
+const quota = await sdk.createQuota(Address.from("0xYourAddress"), request, task)
 ```
 
 This method will automatically calculate the routes and return you the best quota possible
