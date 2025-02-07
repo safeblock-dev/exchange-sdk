@@ -25,7 +25,7 @@ export default defineConfig({
     },
     rollupOptions: {
       // Ensure external dependencies are not bundled into the library
-      external: [ "@safeblock/blockchain-utils", "@ston-fi/sdk", "@ton/ton", "ethers" ],
+      external: [ "@safeblock/blockchain-utils", "ethers" ],
       output: {
         // Configuration for CommonJS-specific output
         exports: "named"

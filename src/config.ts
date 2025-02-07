@@ -23,6 +23,7 @@ const contractAddresses = {
     [avalanche.name]: "0x12dC9256Acc9895B076f6638D628382881e62CeE",
     [arbitrum.name]: "0xcE8CcA271Ebc0533920C83d39F417ED6A0abB7D0",
     [optimism.name]: "0x19cFCE47eD54a88614648DC3f19A5980097007dD",
+    [mainnet.name]: "0xe171AFcd1E0394b3312e68ca823D5BC87F3Db311",
     default: "0x138EB30f73BC423c6455C53df6D89CB01d9eBc63"
   }),
 
@@ -33,6 +34,7 @@ const contractAddresses = {
     [arbitrum.name]: { address: "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9", decimals: 6 },
     [optimism.name]: { address: "0x94b008aA00579c1307B0EF2c499aD98a8ce58e58", decimals: 6 },
     [ton.name]: { address: "EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs", decimals: 6 },
+    [mainnet.name]: { address: "0xdAC17F958D2ee523a2206206994597C13D831ec7", decimals: 6 },
     default: { address: "0x55d398326f99059fF775485246999027B3197955", decimals: 18 }
   }),
 
