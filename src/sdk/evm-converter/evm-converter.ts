@@ -1,14 +1,15 @@
 import { Address, Amount, ethersProvider } from "@safeblock/blockchain-utils"
 import { WrappedToken__factory } from "~/abis/types"
 import { contractAddresses, publicBackendURL } from "~/config"
+import { SdkInstance } from "~/sdk"
 import evmBuildRawTransaction from "~/sdk/evm-converter/evm-build-raw-transaction"
 import EvmCrossChainExtension from "~/sdk/evm-converter/evm-cross-chain-extension"
 import ExchangeConverter from "~/sdk/exchange-converter"
 import { ExchangeUtils } from "~/sdk/exchange-utils"
 import simulateRoutes from "~/sdk/simulate-routes"
-import { SdkInstance } from "~/sdk"
 import { ExchangeQuota, ExchangeRequest, ExecutorCallData, SimulatedRoute } from "~/types"
 import getExchangeRoutes from "~/utils/get-exchange-routes"
+import SdkException, { SdkExceptionCode } from "~/utils/sdk-exception"
 
 interface RawTransactionConverterOptions {
   from: Address
@@ -72,13 +73,13 @@ export default class EvmConverter extends ExchangeConverter {
     }
   }
 
-  public async createMultiChainTransaction(from: Address, request: ExchangeRequest, taskId: symbol): Promise<Error | ExchangeQuota> {
+  public async createMultiChainTransaction(from: Address, request: ExchangeRequest, taskId: symbol): Promise<SdkException | ExchangeQuota> {
     const crossChain = new EvmCrossChainExtension(this)
 
     return crossChain.createMultiChainExchangeTransaction(from, request, taskId)
   }
 
-  public async createSingleChainTransaction(from: Address, route: SimulatedRoute, taskId: symbol): Promise<Error | ExchangeQuota> {
+  public async createSingleChainTransaction(from: Address, route: SimulatedRoute, taskId: symbol): Promise<SdkException | ExchangeQuota> {
     const rawTransaction = await evmBuildRawTransaction(from, route)
 
     return this.rawTransactionToQuota({
@@ -90,7 +91,28 @@ export default class EvmConverter extends ExchangeConverter {
     })
   }
 
-  public async fetchRoutes(request: ExchangeRequest, taskId: symbol): Promise<Error | SimulatedRoute[]> {
+  public async fetchRoutes(request: ExchangeRequest, taskId: symbol): Promise<SdkException | SimulatedRoute[]> {
+    if (ExchangeUtils.isWrapUnwrap(request) && request.tokenIn.network === request.tokenOut.network) {
+      const { amountIn, amountOut, tokenIn, tokenOut, destinationAddress, slippageReadablePercent } = request
+
+      return [{
+        amountIn, amountOut, tokenIn, tokenOut, destinationAddress, slippageReadablePercent,
+        isExactInput: request.exactInput,
+        priceImpactPercent: 0,
+        arrivalGasAmount: undefined,
+        routeReference: "",
+        usedTokensList: [ExchangeUtils.toRouteToken(request.tokenIn), ExchangeUtils.toRouteToken(request.tokenOut)],
+        originalRoute: [{
+          exchange_id: ExchangeUtils.ZeroExchangeId,
+          fee: 0,
+          version: "PAIR_WRAP_UNWRAP",
+          address: request.tokenIn.address,
+          token0: ExchangeUtils.toRouteToken(request.tokenIn),
+          token1: ExchangeUtils.toRouteToken(request.tokenOut)
+        }]
+      }]
+    }
+
     const alternativeRoute = await this.rerouteCrossChainRoutesFetch(request, Address.from(Address.zeroAddress), taskId)
 
     if (alternativeRoute !== null) return alternativeRoute
@@ -103,35 +125,35 @@ export default class EvmConverter extends ExchangeConverter {
       toToken: request.tokenOut
     })
 
-    if (!this.sdkInstance.verifyTask(taskId)) return Error("Task aborted")
+    if (!this.sdkInstance.verifyTask(taskId)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 
     const simulatedRoutes = await simulateRoutes(request, this.sdkInstance.priceStorage, routes)
 
-    if (!this.sdkInstance.verifyTask(taskId)) return Error("Task aborted")
+    if (!this.sdkInstance.verifyTask(taskId)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 
     return simulatedRoutes.filter(route => ExchangeUtils
       .filterRoutesByExpectedOutput(route, this.sdkInstance.priceStorage, this.sdkInstance.sdkConfig.routePriceDifferenceLimit))
   }
 
-  public createSingleChainWrapUnwrapTransaction(request: ExchangeRequest): ExchangeQuota | Error {
-    if (request.tokenIn.network !== request.tokenOut.network) return Error("Different networks")
+  public createSingleChainWrapUnwrapTransaction(request: ExchangeRequest): ExchangeQuota | SdkException {
+    if (request.tokenIn.network !== request.tokenOut.network) return new SdkException("Different networks", SdkExceptionCode.InvalidRequest)
 
     if (!Address.isZero(request.tokenIn.address) && !Address.isZero(request.tokenOut.address))
-      return Error("Not wrap unwrap")
+      return new SdkException("Not wrap unwrap", SdkExceptionCode.InvalidRequest)
 
     const wrappedAddress = Address.from(Address.wrappedOf(request.tokenIn.network))
 
     if (!Address.isZero(request.tokenIn.address) && !Address.equal(request.tokenIn.address, wrappedAddress))
-      return Error("Not wrap unwrap")
+      return new SdkException("Not wrap unwrap", SdkExceptionCode.InvalidRequest)
 
     if (!Address.isZero(request.tokenOut.address) && !Address.equal(request.tokenOut.address, wrappedAddress))
-      return Error("Not wrap unwrap")
+      return new SdkException("Not wrap unwrap", SdkExceptionCode.InvalidRequest)
 
     const amount = request.exactInput
       ? Amount.select(request.amountIn, request.amountOut)
       : Amount.select(request.amountOut, request.amountIn)
 
-    if (!amount || amount.eq(0)) return Error("Invalid amount: expected greater than zero")
+    if (!amount || amount.eq(0)) return new SdkException("Invalid amount: expected greater than zero", SdkExceptionCode.InvalidRequest)
 
     const callData: ExecutorCallData[] = []
 

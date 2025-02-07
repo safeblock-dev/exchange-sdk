@@ -1,12 +1,12 @@
-import { Address, Amount, ton } from "@safeblock/blockchain-utils"
+import { Address, Amount } from "@safeblock/blockchain-utils"
 import { Network } from "ethers"
 import { OffchainOracle__factory } from "~/abis/types"
 import { contractAddresses } from "~/config"
-import { BackendResponse, MultiCallRequest } from "~/types"
+import { MultiCallRequest } from "~/types"
 import ArrayUtils from "~/utils/array-utils"
 import multicall from "~/utils/multicall"
-import request from "~/utils/request"
 import TokensList, { BasicToken } from "~/utils/tokens-list"
+
 
 export default class PriceStorage {
   readonly #prices: Map<string, Map<string, bigint>>
@@ -16,9 +16,12 @@ export default class PriceStorage {
   #workerInterval: any
   #currentFetchingTask = Symbol()
   #initialFetchFinished = false
-  #updateListeners: Function[] = []
 
-  constructor(private readonly tokensList: TokensList, private readonly updateInterval: number = 6000) {
+  constructor(
+    private readonly tokensList: TokensList,
+    private readonly updateInterval: number = 6000,
+    private readonly onUpdated?: (prices: Map<string, Map<string, bigint>>) => void
+  ) {
     this.#prices = new Map()
 
     this.pricesWorker = this.pricesWorker.bind(this)
@@ -30,15 +33,7 @@ export default class PriceStorage {
     })
   }
 
-  public addUpdateListener(callback: Function) {
-    this.#updateListeners.push(callback)
-  }
-
-  public removeUpdateListener(callback: Function) {
-    this.#updateListeners = this.#updateListeners.filter(cb => cb.toString() !== callback.toString())
-  }
-
-  public async waitInitialFetch() {
+  public async waitInitialFetch(pollingInterval = 100) {
     if (this.#initialFetchFinished) return
 
     return new Promise<void>(resolve => {
@@ -47,7 +42,7 @@ export default class PriceStorage {
 
         resolve()
         clearInterval(interval)
-      }, 100)
+      }, pollingInterval)
     })
   }
 
@@ -57,30 +52,8 @@ export default class PriceStorage {
     this.#workerInterval = setInterval(() => this.pricesWorker(), this.updateInterval)
   }
 
-  private async fetchTonTokenPrices() {
-    const ratesList = await request<BackendResponse.TON.TokenRates>({
-      base: "https://tonapi.io",
-      path: "/v2/rates",
-      query: {
-        tokens: this.tokensList.list(ton).map(t => t.address.toString()).join(","),
-        currencies: "usd"
-      }
-    })
-
-    if (!ratesList) return
-
-    Object.entries(ratesList.rates).forEach(([jettonAddress, data]) => {
-      const jetton = this.tokensList.get(ton, Address.from(jettonAddress))
-      if (!jetton) return
-
-      this.#prices.get(ton.name)?.set(jetton.address.toString(), Amount.from(data.prices.USD, jetton.decimals, true).toBigInt())
-    })
-  }
-
   private async fetchTokenPrices(network: Network, task: Symbol) {
     if (!this.#prices.has(network.name)) this.#prices.set(network.name, new Map())
-
-    if (network.name === ton.name) return this.fetchTonTokenPrices()
 
     const usdt = contractAddresses.usdtParams(network)
 
@@ -165,7 +138,7 @@ export default class PriceStorage {
     return Promise.all(this.tokensList.networks.map(network => this.fetchTokenPrices(network, task).catch(() => null))).finally(() => {
       this.#fetchingPrices = false
       this.#updateTimestamp = Date.now()
-    }).finally(() => this.#updateListeners.map(cb => cb()))
+    }).finally(() => this.onUpdated?.(this.#prices))
   }
 
   public async forceRefetch() {

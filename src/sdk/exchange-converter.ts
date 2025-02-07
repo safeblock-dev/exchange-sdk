@@ -3,28 +3,29 @@ import { ExchangeUtils } from "~/sdk/exchange-utils"
 import { SdkInstance } from "~/sdk/index"
 import { ExchangeQuota, ExchangeRequest, SimulatedRoute } from "~/types"
 import PriceStorage from "~/utils/price-storage"
+import SdkException from "~/utils/sdk-exception"
 
 export default abstract class ExchangeConverter {
   protected constructor(public sdkInstance: SdkInstance) {}
 
-  public abstract fetchRoutes(request: ExchangeRequest, taskId: symbol): Promise<Error | SimulatedRoute[]>
+  public abstract fetchRoutes(request: ExchangeRequest, taskId: symbol): Promise<SdkException | SimulatedRoute[]>
 
-  public abstract createSingleChainTransaction(from: Address, route: SimulatedRoute, taskId: symbol): Promise<Error | ExchangeQuota>
+  public abstract createSingleChainTransaction(from: Address, route: SimulatedRoute, taskId: symbol): Promise<SdkException | ExchangeQuota>
 
-  public abstract createMultiChainTransaction(from: Address, request: ExchangeRequest, taskId: symbol): Promise<Error | ExchangeQuota>
+  public abstract createMultiChainTransaction(from: Address, request: ExchangeRequest, taskId: symbol): Promise<SdkException | ExchangeQuota>
 
-  public abstract createSingleChainWrapUnwrapTransaction(request: ExchangeRequest): ExchangeQuota | Error
+  public abstract createSingleChainWrapUnwrapTransaction(request: ExchangeRequest): ExchangeQuota | SdkException
 
   protected isCrossChain(request: ExchangeRequest): boolean {
     return request.tokenIn.network.name !== request.tokenOut.network.name
   }
 
-  protected async rerouteCrossChainRoutesFetch(request: ExchangeRequest, zeroAddress: Address, taskId: symbol) {
+  protected async rerouteCrossChainRoutesFetch(request: ExchangeRequest, zeroAddress: Address, taskId: symbol): Promise<SdkException | SimulatedRoute[] | null> {
     if (!this.isCrossChain(request)) return null
 
     const transaction = await this.createMultiChainTransaction(zeroAddress, request, taskId)
 
-    if (transaction instanceof Error) return transaction
+    if (transaction instanceof SdkException) return transaction
 
     return [
       this.createMockRoute(

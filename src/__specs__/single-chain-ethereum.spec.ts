@@ -45,7 +45,7 @@ describe("Single chain exchanges in Ethereum networks", async () => {
   })
 
   it("should build quota", async () => {
-    const quota = await sdk.createQuota(Address.from(Address.evmBurnAddress), routes[0])
+    const quota = await sdk.createQuotaFromRoute(Address.from(Address.evmBurnAddress), routes[0])
 
     if (quota instanceof Error) {
       throw new Error("quota must not be an error: " + quota.message)

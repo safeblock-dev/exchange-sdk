@@ -30,115 +30,6 @@ export namespace BackendResponse {
     }
     tokens: Record<string, IBackendToken>
   }
-
-  export namespace Symbiosis {
-    export interface DirectRoute {
-      originChainId: number
-      originToken: string
-      destinationChainId: number
-      destinationToken: string
-    }
-
-    export namespace API {
-      interface Token {
-        address: string
-        chainId: number
-        decimals: number
-        symbol: string
-        icon: string
-        amount: string
-      }
-
-      interface FeeValue extends Token {
-        amount: string
-      }
-
-      interface Fee {
-        address: string
-        chainId: number
-        decimals: number
-        symbol: string
-        icon: string
-        amount: string
-      }
-
-      interface ProviderFee {
-        provider: string
-        value: FeeValue
-        save: FeeValue
-        description: string
-      }
-
-      interface RouteToken extends Token {}
-
-      interface RouteProvider {
-        provider: string
-        tokens: RouteToken[]
-      }
-
-      export interface SwapApiResponse {
-        tx: {
-          messages: [
-            {
-              address: string
-              amount: string
-              payload: string
-            }
-          ]
-        }
-        fee: Fee
-        fees: ProviderFee[]
-        route: RouteToken[]
-        routes: RouteProvider[]
-        priceImpact: string
-        tokenAmountOut: Token
-        tokenAmountOutMin: Token
-        amountInUsd: Token
-        rewards: Token[]
-        approveTo: string
-        inTradeType: string
-        outTradeType: string
-        type: string
-        kind: string
-        estimatedTime: number
-      }
-    }
-  }
-
-  export namespace TON {
-    export interface StonfiQuota {
-      offer_address: string
-      ask_address: string
-      offer_jetton_wallet: string
-      ask_jetton_wallet: string
-      router_address: string
-      pool_address: string
-      offer_units: string
-      ask_units: string
-      slippage_tolerance: string
-      min_ask_units: string
-      swap_rate: string
-      price_impact: string
-      fee_address: string
-      fee_units: string
-      fee_percent: string
-    }
-
-    export interface TokenRates {
-      rates: Record<string, {
-        prices: {
-          USD: number
-        }
-      }>
-    }
-  }
-}
-
-export interface TonAccount {
-  address: string
-  chain: any
-  walletStateInit: string
-  publicKey?: string
 }
 
 export interface RouteStep extends Omit<BackendResponse.IBackendRouteStep, "token0_id" | "token1_id" | "token0_fee" | "token1_fee"> {
@@ -207,7 +98,8 @@ export type ExecutorCallData = {
   network: Network,
   value?: Amount,
   gasLimitMultiplier?: number,
-  to: Address }
+  to: Address
+}
 
 export interface ExchangeQuota {
   executorCallData: ExecutorCallData[]

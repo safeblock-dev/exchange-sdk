@@ -7,6 +7,7 @@ import evmBuildRawTransaction from "~/sdk/evm-converter/evm-build-raw-transactio
 import EvmConverter from "~/sdk/evm-converter/evm-converter"
 import { ExchangeUtils } from "~/sdk/exchange-utils"
 import { ExchangeQuota, ExchangeRequest, ExecutorCallData, SimulatedRoute } from "~/types"
+import SdkException, { SdkExceptionCode } from "~/utils/sdk-exception"
 import { BasicToken } from "~/utils/tokens-list"
 
 interface IBuildCrossChainTransactionOptions {
@@ -21,20 +22,20 @@ interface IBuildCrossChainTransactionOptions {
 export default class EvmCrossChainExtension {
   constructor(private readonly parent: EvmConverter) {}
 
-  public async createMultiChainExchangeTransaction(from: Address, request: ExchangeRequest, taskId: symbol) {
+  public async createMultiChainExchangeTransaction(from: Address, request: ExchangeRequest, taskId: symbol): Promise<ExchangeQuota | SdkException> {
     const _request = ExchangeUtils.autoUpdateDirection(request)
 
-    if (_request instanceof Error) return _request
+    if (_request instanceof SdkException) return _request
 
     if (_request.exactInput) return this.createMultiChainExchangeTransactionLTR(from, _request, taskId)
 
     return this.createMultiChainExchangeTransactionRTL(from, _request, taskId)
   }
 
-  private async createMultiChainExchangeTransactionRTL(from: Address, request: ExchangeRequest, taskId: symbol) {
+  private async createMultiChainExchangeTransactionRTL(from: Address, request: ExchangeRequest, taskId: symbol): Promise<ExchangeQuota | SdkException> {
     const environment = await this.generateEnvironment(request)
 
-    if (environment instanceof Error) return environment
+    if (environment instanceof SdkException) return environment
 
     const {
       fromNetworkUSDT,
@@ -53,8 +54,8 @@ export default class EvmCrossChainExtension {
       }), taskId)
 
 
-      if (destinationChainRoutes instanceof Error) return destinationChainRoutes
-      if (destinationChainRoutes.length === 0) return Error("Destination routes not found")
+      if (destinationChainRoutes instanceof SdkException) return destinationChainRoutes
+      if (destinationChainRoutes.length === 0) return new SdkException("Destination routes not found", SdkExceptionCode.RoutesNotFound)
 
       destinationNetworkExpectedReceiveAmountUSDT = destinationChainRoutes[0].amountIn
       destinationChainRoute = destinationChainRoutes[0]
@@ -66,8 +67,8 @@ export default class EvmCrossChainExtension {
         amountOut: Amount.from(destinationNetworkExpectedReceiveAmountUSDT.toReadable(), fromNetworkUSDT.decimals, true)
       }), taskId)
 
-      if (sourceChainRoutes instanceof Error) return sourceChainRoutes
-      if (sourceChainRoutes.length === 0) return Error("Source routes not found")
+      if (sourceChainRoutes instanceof SdkException) return sourceChainRoutes
+      if (sourceChainRoutes.length === 0) return new SdkException("Source routes not found", SdkExceptionCode.RoutesNotFound)
 
       sourceNetworkSendAmount = sourceChainRoutes[0].amountOut
 
@@ -85,12 +86,12 @@ export default class EvmCrossChainExtension {
     })
   }
 
-  private async createMultiChainExchangeTransactionLTR(from: Address, request: ExchangeRequest, taskId: symbol) {
+  private async createMultiChainExchangeTransactionLTR(from: Address, request: ExchangeRequest, taskId: symbol): Promise<ExchangeQuota | SdkException> {
     const environment = await this.generateEnvironment(request)
 
-    if (!this.parent.sdkInstance.verifyTask(taskId)) return Error("Aborted")
+    if (!this.parent.sdkInstance.verifyTask(taskId)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 
-    if (environment instanceof Error) return environment
+    if (environment instanceof SdkException) return environment
 
     const {
       fromNetworkUSDT,
@@ -108,11 +109,11 @@ export default class EvmCrossChainExtension {
       }), taskId)
 
 
-      if (!this.parent.sdkInstance.verifyTask(taskId)) return Error("Aborted")
+      if (!this.parent.sdkInstance.verifyTask(taskId)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 
-      if (sourceChainRoutes instanceof Error) return sourceChainRoutes
+      if (sourceChainRoutes instanceof SdkException) return sourceChainRoutes
 
-      if (sourceChainRoutes.length === 0) return Error("Source routes not found")
+      if (sourceChainRoutes.length === 0) return new SdkException("Source routes not found", SdkExceptionCode.RoutesNotFound)
 
 
       sourceNetworkSendAmount = sourceChainRoutes[0].amountOut
@@ -126,10 +127,10 @@ export default class EvmCrossChainExtension {
         amountIn: Amount.from((sourceChainRoute?.amountOut ?? request.amountIn).toReadable(), toNetworkUSDT.decimals, true)
       }), taskId)
 
-      if (!this.parent.sdkInstance.verifyTask(taskId)) return Error("Aborted")
+      if (!this.parent.sdkInstance.verifyTask(taskId)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 
-      if (destinationChainRoutes instanceof Error) return destinationChainRoutes
-      if (destinationChainRoutes.length === 0) return Error("Destination routes not found")
+      if (destinationChainRoutes instanceof SdkException) return destinationChainRoutes
+      if (destinationChainRoutes.length === 0) return new SdkException("Destination routes not found", SdkExceptionCode.RoutesNotFound)
 
       destinationChainRoute = destinationChainRoutes[0]
     }
@@ -144,7 +145,7 @@ export default class EvmCrossChainExtension {
     })
   }
 
-  private async buildCrossChainTransaction(request: ExchangeRequest, taskId: symbol, options: IBuildCrossChainTransactionOptions) {
+  private async buildCrossChainTransaction(request: ExchangeRequest, taskId: symbol, options: IBuildCrossChainTransactionOptions): Promise<ExchangeQuota | SdkException> {
     const {
       sourceChainRoute,
       destinationChainRoute,
@@ -172,7 +173,7 @@ export default class EvmCrossChainExtension {
         taskId
       })
 
-      if (!this.parent.sdkInstance.verifyTask(taskId)) return Error("Aborted")
+      if (!this.parent.sdkInstance.verifyTask(taskId)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 
       if (Address.isZero(request.tokenIn.address)) nativeAmount = nativeAmount.plus(sourceChainSwap.amountIn.toString())
 
@@ -192,7 +193,7 @@ export default class EvmCrossChainExtension {
       //  taskId
       //})
 
-      if (!this.parent.sdkInstance.verifyTask(taskId)) return Error("Aborted")
+      if (!this.parent.sdkInstance.verifyTask(taskId)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 
       const abiCoder = new AbiCoder()
       destinationNetworkCallData = abiCoder.encode(
@@ -213,17 +214,17 @@ export default class EvmCrossChainExtension {
       destinationNetworkCallData
     )
 
-    if (!this.parent.sdkInstance.verifyTask(taskId)) return Error("Aborted")
+    if (!this.parent.sdkInstance.verifyTask(taskId)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 
-    if (bridgeQuota instanceof Error) return bridgeQuota
+    if (bridgeQuota instanceof SdkException) return bridgeQuota
 
     nativeAmount = nativeAmount.plus(bridgeQuota.valueToSend.toString())
 
     const arrivalGas = await ExchangeUtils.computeArrivalGasData(request, from)
 
-    if (!this.parent.sdkInstance.verifyTask(taskId)) return Error("Aborted")
+    if (!this.parent.sdkInstance.verifyTask(taskId)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 
-    if (arrivalGas instanceof Error) return arrivalGas
+    if (arrivalGas instanceof SdkException) return arrivalGas
 
     if (arrivalGas) nativeAmount = nativeAmount.plus(arrivalGas.nativeAmount.toString())
 
@@ -267,7 +268,7 @@ export default class EvmCrossChainExtension {
       approveWanted
     } = await ExchangeUtils.getTokenTransferDetails(request.tokenIn, from || Address.from(Address.zeroAddress), request.amountIn)
 
-    if (!this.parent.sdkInstance.verifyTask(taskId)) return Error("Aborted")
+    if (!this.parent.sdkInstance.verifyTask(taskId)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 
     if (approveWanted) {
       executorCallData.push({
@@ -293,7 +294,7 @@ export default class EvmCrossChainExtension {
       network: request.tokenIn.network
     })
 
-    if (!this.parent.sdkInstance.verifyTask(taskId)) return Error("Aborted")
+    if (!this.parent.sdkInstance.verifyTask(taskId)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 
     let amountOut = request.amountOut
     let amountIn = request.amountIn
@@ -331,12 +332,12 @@ export default class EvmCrossChainExtension {
   }
 
   private async generateEnvironment(request: ExchangeRequest) {
-    if (request.tokenIn.network === request.tokenOut.network) return Error("Same network")
+    if (request.tokenIn.network === request.tokenOut.network) return new SdkException("Same network", SdkExceptionCode.SameNetwork)
 
     const fromNetworkUSDT = contractAddresses.usdtParams(request.tokenIn.network)
     const toNetworkUSDT = contractAddresses.usdtParams(request.tokenOut.network)
 
-    if (!fromNetworkUSDT || !toNetworkUSDT) return Error("No USDT found on source or destination network")
+    if (!fromNetworkUSDT || !toNetworkUSDT) return new SdkException("No USDT found on source or destination network", SdkExceptionCode.NoTetherFound)
 
     return {
       fromNetworkUSDT: { ...fromNetworkUSDT, address: Address.from(fromNetworkUSDT.address), network: request.tokenIn.network },

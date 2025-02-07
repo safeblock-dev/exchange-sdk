@@ -1,17 +1,20 @@
 import { Address, Amount, ethersProvider } from "@safeblock/blockchain-utils"
 import BigNumber from "bignumber.js"
 import { toUtf8Bytes } from "ethers"
-import {
-  BridgeFaucet__factory,
-  LayerZero__factory,
-  Token__factory,
-} from "~/abis/types"
+import { BridgeFaucet__factory, LayerZero__factory, Token__factory } from "~/abis/types"
 import { contractAddresses, stargateNetworksMapping } from "~/config"
 import { ExchangeRequest, SimulatedRoute } from "~/types"
 import PriceStorage from "~/utils/price-storage"
+import SdkException, { SdkExceptionCode } from "~/utils/sdk-exception"
 import { BasicToken } from "~/utils/tokens-list"
 
 export class ExchangeUtils {
+  public static ZeroExchangeId = "00000000-0000-0000-0000-000000000000"
+
+  public static toRouteToken(token: BasicToken): BasicToken & { fee: number } {
+    return { fee: 0, ...token }
+  }
+
   public static async computeArrivalGasData(request: ExchangeRequest, address: Address) {
     try {
       if (!request.arrivalGasAmount) return null
@@ -35,7 +38,7 @@ export class ExchangeUtils {
         callData
       }
     } catch (e: any) {
-      return Error(e.toString())
+      return new SdkException(e.toString(), SdkExceptionCode.InternalError)
     }
   }
 
@@ -52,7 +55,7 @@ export class ExchangeUtils {
         destinationChainCallData ? 400_000 : 0
       )
     } catch (e: any) {
-      return Error(e.toString())
+      return new SdkException(e.toString(), SdkExceptionCode.InternalError)
     }
   }
 
@@ -120,11 +123,11 @@ export class ExchangeUtils {
     return Math.abs(change) < maxDifference
   }
 
-  public static autoUpdateDirection(request: ExchangeRequest) {
+  public static autoUpdateDirection(request: ExchangeRequest): SdkException | ExchangeRequest {
     const _request = { ...request }
 
     if (!Amount.isAmount(_request.amountIn) && !Amount.isAmount(_request.amountOut))
-      return Error("Invalid request")
+      return new SdkException("Invalid request", SdkExceptionCode.InvalidRequest)
 
     if (_request.exactInput && !Amount.isAmount(_request.amountIn)) return ExchangeUtils.updateRequest(_request, {
       exactInput: false

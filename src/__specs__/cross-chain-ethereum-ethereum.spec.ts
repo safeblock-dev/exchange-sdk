@@ -76,7 +76,7 @@ describe("Cross chain exchanges from Ethereum to Ethereum", async () => {
   })
 
   it("should build quota", async () => {
-    const quota = await sdk.createQuota(Address.from(Address.zeroAddress), forceNormalRoutes[0][0])
+    const quota = await sdk.createQuotaFromRoute(Address.from(Address.zeroAddress), forceNormalRoutes[0][0])
 
     if (quota instanceof Error) {
       throw new Error("quota must not be an error: " + quota.message)
