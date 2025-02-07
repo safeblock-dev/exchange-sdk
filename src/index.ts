@@ -7,8 +7,8 @@ export {
   SafeBlock,
   multicall,
   SdkException,
+  SdkExceptionCode,
 
-  type SdkExceptionCode,
   type SdkConfig,
   type ExecutorCallData,
   type ExchangeRequest,
