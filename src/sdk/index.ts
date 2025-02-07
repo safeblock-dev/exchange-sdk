@@ -100,17 +100,18 @@ export default class SafeBlock extends SdkInstance {
     })
   }
 
-  public async createQuota(from: Address, request: ExchangeRequest) {
-    const task = this.updateTask()
+  public async createQuota(from: Address, request: ExchangeRequest, task?: symbol) {
+    const _task = task ?? this.updateTask()
+
     const routes = await this.findRoutes(request)
 
-    if (!this.verifyTask(task)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
+    if (!this.verifyTask(_task)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 
     if (routes instanceof SdkException) return routes
     if (routes.length === 0) return new SdkException("Routes not found", SdkExceptionCode.RoutesNotFound)
 
     const quota = this.createQuotaFromRoute(from, routes[0])
-    if (!this.verifyTask(task)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
+    if (!this.verifyTask(_task)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 
     return quota
   }
