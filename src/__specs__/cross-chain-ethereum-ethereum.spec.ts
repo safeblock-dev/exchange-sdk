@@ -1,5 +1,5 @@
 import { Address, Amount } from "@safeblock/blockchain-utils"
-import { bnbDAI, bnbUSDT, maticUSDC, maticUSDT, sdkConfig } from "./utils/sdk-test-config"
+import { bnbDAI, mainnetUSDT, maticUSDC, maticUSDT, sdkConfig } from "./utils/sdk-test-config"
 import SafeBlockSDK from "~/sdk"
 import { ExchangeRequest, SimulatedRoute } from "~/types"
 import { describe, it, expect } from "vitest"
@@ -9,9 +9,9 @@ describe("Cross chain exchanges from Ethereum to Ethereum", async () => {
 
   const usdtTokenRequest: ExchangeRequest = {
     exactInput: true,
-    amountIn: new Amount(10, bnbUSDT.decimals, true),
+    amountIn: new Amount(10, mainnetUSDT.decimals, true),
     amountOut: new Amount(0, maticUSDC.decimals, true),
-    tokenIn: bnbUSDT,
+    tokenIn: mainnetUSDT,
     tokenOut: maticUSDC,
     slippageReadablePercent: 1
   }
@@ -34,6 +34,7 @@ describe("Cross chain exchanges from Ethereum to Ethereum", async () => {
     slippageReadablePercent: 1
   }
 
+  await sdk.priceStorage.forceRefetch()
   await new Promise(r => setTimeout(r, 5_000))
   const allRoutes = [
     await sdk.findRoutes(usdtTokenRequest),
