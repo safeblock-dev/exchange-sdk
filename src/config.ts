@@ -1,11 +1,11 @@
 import { arbitrum, avalanche, bnb, mainnet, optimism, matic, ton } from "@safeblock/blockchain-utils"
+import { base } from "@safeblock/blockchain-utils/dist/networks"
 import selectAddress from "@safeblock/blockchain-utils/dist/utils/select-address"
 import { Network } from "ethers"
 
 
 const contractAddresses = {
   entryPoint: (network: Network) => selectAddress(network, {
-    //[bnb.name]: "0x9AE4De30ad3943e3b65E5DF41e8FB8CC0F0213d7",
     default: "0x9AE4De30ad3943e3b65E5DF41e8FB8CC0F0213d7"
   }),
 
@@ -32,6 +32,7 @@ const contractAddresses = {
     [avalanche.name]: { address: "0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7", decimals: 6 },
     [arbitrum.name]: { address: "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9", decimals: 6 },
     [optimism.name]: { address: "0x94b008aA00579c1307B0EF2c499aD98a8ce58e58", decimals: 6 },
+    [base.name]: { address: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", decimals: 6 }, // USDC
     [ton.name]: { address: "EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs", decimals: 6 },
     default: { address: "0x55d398326f99059fF775485246999027B3197955", decimals: 18 }
   }),
@@ -72,7 +73,8 @@ function apiNetworkNamesMapping(network: Network) {
     [matic.name]: "NETWORK_POLYGON",
     [avalanche.name]: "NETWORK_AVALANCHE",
     [arbitrum.name]: "NETWORK_ARBITRUM",
-    [optimism.name]: "NETWORK_OPTIMISM"
+    [optimism.name]: "NETWORK_OPTIMISM",
+    [base.name]: "NETWORK_BASE"
   }
 
   return map[network.name] ?? "NETWORK_UNSPECIFIED"
