@@ -1,10 +1,22 @@
-import { Address, bnb, mainnet, matic, ton } from "@safeblock/blockchain-utils"
+import { Address, base, bnb, mainnet, matic, ton } from "@safeblock/blockchain-utils"
 import { SdkConfig } from "~/sdk"
 
 const bnbDAI = { // DAI
   address: Address.from("0x1AF3F329e8BE154074D8769D1FFa4eE058B1DBc3"),
   decimals: 18,
   network: bnb
+}
+
+const baseUSDC = { // DAI
+  address: Address.from("0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"),
+  decimals: 6,
+  network: base
+}
+
+const baseWETH = { // DAI
+  address: Address.from("0x4200000000000000000000000000000000000006"),
+  decimals: 18,
+  network: base
 }
 
 const mainnetUSDT = { // USDT
@@ -61,7 +73,8 @@ const sdkConfig: SdkConfig = {
     [bnb.name]: [bnbUSDT, bnbDAI, bnbDOGE],
     [matic.name]: [maticUSDC, maticUSDT],
     [ton.name]: [tonUSDT, tonNOT, tonDOGS],
-    [mainnet.name]: [mainnetUSDT]
+    [mainnet.name]: [mainnetUSDT],
+    [base.name]: [baseUSDC, baseWETH]
   },
   backend: {
     url: "https://api.safeblock.com"
@@ -81,5 +94,7 @@ export {
   tonUSDT,
   tonNOT,
   tonDOGS,
+  baseWETH,
+  baseUSDC,
   sdkConfig
 }
