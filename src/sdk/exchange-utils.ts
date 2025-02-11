@@ -81,8 +81,6 @@ export class ExchangeUtils {
   public static isWrapUnwrap(request: ExchangeRequest | SimulatedRoute) {
     const addresses = [request.tokenIn.address, request.tokenOut.address]
 
-    if (Address.inArray(Address.zeroAddress, addresses)) return false
-
     return addresses.some(address => Address.equal(address, Address.wrappedOf(request.tokenIn.network)))
       && addresses.some(address => Address.isZero(address))
   }
