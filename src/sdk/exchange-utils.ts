@@ -85,8 +85,8 @@ export class ExchangeUtils {
   }
 
   public static computePriceImpact(request: ExchangeRequest, amountIn: Amount, amountOut: Amount, priceStorage: PriceStorage) {
-    const tokenInPrice = priceStorage.getPrice(request.tokenIn)
-    const tokenOutPrice = priceStorage.getPrice(request.tokenOut)
+    const tokenInPrice = priceStorage.getPrice(request.tokenIn.network, request.tokenIn.address)
+    const tokenOutPrice = priceStorage.getPrice(request.tokenOut.network, request.tokenOut.address)
 
     const tokenInAmountUSD = amountIn.toReadableBigNumber().multipliedBy(tokenInPrice.toReadableBigNumber())
     const tokenOutAmountUSD = amountOut.toReadableBigNumber().multipliedBy(tokenOutPrice.toReadableBigNumber())
@@ -109,8 +109,8 @@ export class ExchangeUtils {
   }
 
   public static async filterRoutesByExpectedOutput(route: SimulatedRoute, priceStorage: PriceStorage, maxDifference = 15) {
-    const fromTokenPrice = priceStorage.getPrice(route.tokenIn)
-    const toTokenPrice = priceStorage.getPrice(route.tokenOut)
+    const fromTokenPrice = priceStorage.getPrice(route.tokenIn.network, route.tokenIn.address)
+    const toTokenPrice = priceStorage.getPrice(route.tokenOut.network, route.tokenOut.address)
 
     const fromTokenUSDAmount = route.amountIn.mul(fromTokenPrice).toReadableBigNumber()
     const toTokenUSDAmount = route.amountOut.mul(toTokenPrice).toReadableBigNumber()
