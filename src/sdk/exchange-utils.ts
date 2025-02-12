@@ -98,7 +98,7 @@ export class ExchangeUtils {
     if (priceImpact.gte(9_999)) return 9_999
     if (priceImpact.lte(-9_999)) return -9_999
 
-    return priceImpact
+    return priceImpact.toNumber()
   }
 
   public static updateRequest(request: ExchangeRequest, update: Partial<ExchangeRequest>) {
