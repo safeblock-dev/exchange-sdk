@@ -72,7 +72,7 @@ export class ExchangeUtils {
 
     return {
       tokenContract,
-      approveWanted: approveWanted.toReadable() > 0,
+      approveWanted: approveWanted.toReadableBigNumber().gt(0),
       approveAmount: approveWanted
     }
   }
@@ -88,15 +88,15 @@ export class ExchangeUtils {
     const tokenInPrice = priceStorage.getPrice(request.tokenIn)
     const tokenOutPrice = priceStorage.getPrice(request.tokenOut)
 
-    const tokenInAmountUSD = amountIn.toReadable() * tokenInPrice.toReadable()
-    const tokenOutAmountUSD = amountOut.toReadable() * tokenOutPrice.toReadable()
+    const tokenInAmountUSD = amountIn.toReadableBigNumber().multipliedBy(tokenInPrice.toReadableBigNumber())
+    const tokenOutAmountUSD = amountOut.toReadableBigNumber().multipliedBy(tokenOutPrice.toReadableBigNumber())
 
-    const priceImpact = ((tokenOutAmountUSD / tokenInAmountUSD) - 1) * 100
+    const priceImpact = tokenOutAmountUSD.div(tokenInAmountUSD).minus(1).multipliedBy(100)
 
-    if (isNaN(priceImpact)) return 0
+    if (priceImpact.isNaN()) return 0
 
-    if (priceImpact >= 9_999) return 9_999
-    if (priceImpact <= -9_999) return -9_999
+    if (priceImpact.gte(9_999)) return 9_999
+    if (priceImpact.lte(-9_999)) return -9_999
 
     return priceImpact
   }
@@ -112,12 +112,12 @@ export class ExchangeUtils {
     const fromTokenPrice = priceStorage.getPrice(route.tokenIn)
     const toTokenPrice = priceStorage.getPrice(route.tokenOut)
 
-    const fromTokenUSDAmount = route.amountIn.mul(fromTokenPrice).toReadable()
-    const toTokenUSDAmount = route.amountOut.mul(toTokenPrice).toReadable()
+    const fromTokenUSDAmount = route.amountIn.mul(fromTokenPrice).toReadableBigNumber()
+    const toTokenUSDAmount = route.amountOut.mul(toTokenPrice).toReadableBigNumber()
 
-    const change = ((toTokenUSDAmount - fromTokenUSDAmount) / fromTokenUSDAmount) * 100
+    const change = toTokenUSDAmount.minus(fromTokenUSDAmount).div(fromTokenUSDAmount).multipliedBy(100)
 
-    return Math.abs(change) < maxDifference
+    return change.abs().lt(maxDifference)
   }
 
   public static autoUpdateDirection(request: ExchangeRequest): SdkException | ExchangeRequest {

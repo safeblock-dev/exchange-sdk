@@ -1,5 +1,6 @@
-import { Amount } from "@safeblock/blockchain-utils"
+import { Address, Amount } from "@safeblock/blockchain-utils"
 import runSingleChainTests from "~/__specs__/utils/run-single-chain-tests"
+import { SdkException } from "~/index"
 import { bnbDAI, bnbUSDT, mainnetETH, sdkConfig } from "./utils/sdk-test-config"
 import SafeBlockSDK from "~/sdk"
 import { ExchangeRequest } from "~/types"
@@ -19,6 +20,7 @@ describe("Single chain exchanges in Ethereum networks", async () => {
   }
 
   const routes = await sdk.findRoutes(request)
+  await sdk.priceStorage.waitInitialFetch()
 
   if (routes instanceof Error) {
     throw new Error("routes must not be an error: " + routes.message)
@@ -39,5 +41,19 @@ describe("Single chain exchanges in Ethereum networks", async () => {
 
   it("should not return error on correct reverse request", () => {
     expect(reverseRoutes).not.toBeInstanceOf(Error)
+  })
+
+  if (reverseRoutes instanceof SdkException) {
+    throw new Error("routes reverse must not be an error: " + reverseRoutes.message)
+  }
+
+  const reverseQuota = await sdk.createQuotaFromRoute(Address.from(Address.evmBurnAddress), reverseRoutes[0])
+
+  if (reverseQuota instanceof SdkException) {
+    throw new Error("routes reverse must not be an error: " + reverseQuota.message)
+  }
+
+  it("should return adequate amount out value in reverse quota", () => {
+    expect(reverseQuota.amountIn.toReadableBigNumber().gt(100)).toBeTruthy()
   })
 })

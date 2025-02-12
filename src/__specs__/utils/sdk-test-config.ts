@@ -79,7 +79,7 @@ const sdkConfig: SdkConfig = {
     [bnb.name]: [bnbUSDT, bnbDAI, bnbDOGE],
     [matic.name]: [maticUSDC, maticUSDT],
     [ton.name]: [tonUSDT, tonNOT, tonDOGS],
-    [mainnet.name]: [mainnetUSDT],
+    [mainnet.name]: [mainnetUSDT, mainnetETH],
     [base.name]: [baseUSDC, baseWETH]
   },
   backend: {
