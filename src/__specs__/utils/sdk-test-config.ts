@@ -25,6 +25,12 @@ const mainnetUSDT = { // USDT
   network: mainnet
 }
 
+const mainnetETH = { // ETH
+  address: Address.from(Address.zeroAddress),
+  decimals: 18,
+  network: mainnet
+}
+
 const bnbUSDT = { // USDT
   address: Address.from("0x55d398326f99059fF775485246999027B3197955"),
   decimals: 18,
@@ -91,6 +97,7 @@ export {
   maticUSDT,
   maticUSDC,
   mainnetUSDT,
+  mainnetETH,
   tonUSDT,
   tonNOT,
   tonDOGS,

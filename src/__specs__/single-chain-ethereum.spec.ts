@@ -1,9 +1,9 @@
 import { Amount } from "@safeblock/blockchain-utils"
 import runSingleChainTests from "~/__specs__/utils/run-single-chain-tests"
-import { bnbDAI, bnbUSDT, sdkConfig } from "./utils/sdk-test-config"
+import { bnbDAI, bnbUSDT, mainnetETH, sdkConfig } from "./utils/sdk-test-config"
 import SafeBlockSDK from "~/sdk"
 import { ExchangeRequest } from "~/types"
-import { describe } from "vitest"
+import { describe, expect, it } from "vitest"
 
 describe("Single chain exchanges in Ethereum networks", async () => {
   const sdk = new SafeBlockSDK(sdkConfig)
@@ -24,5 +24,20 @@ describe("Single chain exchanges in Ethereum networks", async () => {
     throw new Error("routes must not be an error: " + routes.message)
   }
 
-  runSingleChainTests(request, routes, sdk)
+  await runSingleChainTests(request, routes, sdk)
+
+  const reverseRequest: ExchangeRequest = {
+    exactInput: false,
+    amountIn: new Amount(0, bnbUSDT.decimals, true),
+    amountOut: new Amount(2, mainnetETH.decimals, true),
+    tokenIn: bnbUSDT,
+    tokenOut: mainnetETH,
+    slippageReadablePercent: 1
+  }
+
+  const reverseRoutes = await sdk.findRoutes(reverseRequest)
+
+  it("should not return error on correct reverse request", () => {
+    expect(reverseRoutes).not.toBeInstanceOf(Error)
+  })
 })

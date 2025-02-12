@@ -60,7 +60,6 @@ export class ExchangeUtils {
   }
 
   public static async getTokenTransferDetails(token: BasicToken, ownerAddress: Address, spendAmount: Amount) {
-    //const tokenContract = getTokenContract(token.address, publicEthersProviders(token.network))
     const tokenContract = Token__factory.connect(token.address.toString(), ethersProvider(token.network))
 
     let approveWanted: Amount = new Amount(0, token.decimals, false)

@@ -27,5 +27,5 @@ describe("Single chain exchanges in BASE network", async () => {
     throw new Error("routes must not be an error: " + routes.message)
   }
 
-  runSingleChainTests(request, routes, sdk, 101)
+  await runSingleChainTests(request, routes, sdk, 101)
 })

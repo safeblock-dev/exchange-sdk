@@ -3,7 +3,9 @@ import { expect, it } from "vitest"
 import SafeBlock from "~/sdk"
 import { ExchangeRequest, SimulatedRoute } from "~/types"
 
-export default function runSingleChainTests(request: ExchangeRequest, routes: SimulatedRoute[], sdk: SafeBlock, maxPI = 99) {
+export default async function runSingleChainTests(request: ExchangeRequest, routes: SimulatedRoute[], sdk: SafeBlock, maxPI = 99) {
+  const quota = await sdk.createQuotaFromRoute(Address.from(Address.evmBurnAddress), routes[0])
+
   it("should not return error on correct request", () => {
     expect(routes).not.toBeInstanceOf(Error)
   })
@@ -22,12 +24,10 @@ export default function runSingleChainTests(request: ExchangeRequest, routes: Si
   })
 
   it("should compute correct output amount", () => {
-    expect(routes[0].amountOut.toString()).not.toEqual(request.amountOut.toString())
+    expect(routes[0].amountOut.toReadableBigNumber().toFixed()).not.toEqual(request.amountOut.toReadableBigNumber().toFixed())
   })
 
-  it("should build quota", async () => {
-    const quota = await sdk.createQuotaFromRoute(Address.from(Address.evmBurnAddress), routes[0])
-
+  it("should build quota", () => {
     if (quota instanceof Error) {
       throw new Error("quota must not be an error: " + quota.message)
     }
