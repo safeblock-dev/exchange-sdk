@@ -126,12 +126,14 @@ export default class SafeBlock extends SdkInstance {
       chainId: data.network.chainId,
       value: data.value?.toBigNumber().toFixed(0),
       to: data.to.toString(),
-      ...feeData
+      gasPrice: feeData.gasPrice
     }
 
     const estimation = await signer.estimateGas(transactionDetails).catch(error => {
       return new SdkException("Cannot estimate transaction: " + String(error?.message), SdkExceptionCode.TransactionPrepareError)
     })
+
+    if (estimation instanceof SdkException) return estimation
 
     return {
       ...transactionDetails,
