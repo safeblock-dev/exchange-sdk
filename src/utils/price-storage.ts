@@ -9,7 +9,7 @@ import TokensList, { BasicToken } from "~/utils/tokens-list"
 
 
 export default class PriceStorage {
-  readonly _prices: Map<string, Map<string, bigint>>
+  private readonly _prices: Map<string, Map<string, bigint>>
 
   #updateTimestamp = 0
   #fetchingPrices = false
