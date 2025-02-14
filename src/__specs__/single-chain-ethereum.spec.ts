@@ -19,8 +19,9 @@ describe("Single chain exchanges in Ethereum networks", async () => {
     slippageReadablePercent: 1
   }
 
-  const routes = await sdk.findRoutes(request)
   await sdk.priceStorage.waitInitialFetch()
+
+  const routes = await sdk.findRoutes(request)
 
   if (routes instanceof Error) {
     throw new Error("routes must not be an error: " + routes.message)

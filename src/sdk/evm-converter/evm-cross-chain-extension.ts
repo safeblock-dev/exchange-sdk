@@ -13,8 +13,8 @@ import { BasicToken } from "~/utils/tokens-list"
 interface IBuildCrossChainTransactionOptions {
   sourceChainRoute: SimulatedRoute | null
   destinationChainRoute: SimulatedRoute | null
-  toNetworkUSDT: Omit<BasicToken, "network">
-  fromNetworkUSDT: Omit<BasicToken, "network">
+  toNetworkUSDC: Omit<BasicToken, "network">
+  fromNetworkUSDC: Omit<BasicToken, "network">
   from: Address
   sourceNetworkSendAmount: Amount
 }
@@ -38,34 +38,35 @@ export default class EvmCrossChainExtension {
     if (environment instanceof SdkException) return environment
 
     const {
-      fromNetworkUSDT,
-      toNetworkUSDT
+      fromNetworkUSDC,
+      toNetworkUSDC
     } = environment
 
-    let destinationNetworkExpectedReceiveAmountUSDT: Amount = request.amountOut
+    let destinationNetworkExpectedReceiveAmountUSDC: Amount = request.amountOut
 
     let sourceChainRoute: null | SimulatedRoute = null
     let destinationChainRoute: null | SimulatedRoute = null
     let sourceNetworkSendAmount: Amount = request.amountIn
 
-    if (!Address.equal(request.tokenOut.address, toNetworkUSDT.address)) {
+    if (!Address.equal(request.tokenOut.address, toNetworkUSDC.address)) {
       const destinationChainRoutes = await this.parent.fetchRoutes(ExchangeUtils.updateRequest(request, {
-        tokenIn: toNetworkUSDT
+        tokenIn: toNetworkUSDC
       }), taskId)
 
 
       if (destinationChainRoutes instanceof SdkException) return destinationChainRoutes
       if (destinationChainRoutes.length === 0) return new SdkException("Destination routes not found", SdkExceptionCode.RoutesNotFound)
 
-      destinationNetworkExpectedReceiveAmountUSDT = destinationChainRoutes[0].amountIn
+      destinationNetworkExpectedReceiveAmountUSDC = destinationChainRoutes[0].amountIn
       destinationChainRoute = destinationChainRoutes[0]
     }
 
-    if (!Address.equal(request.tokenIn.address, fromNetworkUSDT.address)) {
+    if (!Address.equal(request.tokenIn.address, fromNetworkUSDC.address)) {
       const sourceChainRoutes = await this.parent.fetchRoutes(ExchangeUtils.updateRequest(request, {
-        tokenOut: fromNetworkUSDT,
-        amountOut: Amount.from(destinationNetworkExpectedReceiveAmountUSDT.toReadable(), fromNetworkUSDT.decimals, true)
+        tokenOut: fromNetworkUSDC,
+        amountOut: Amount.from(destinationNetworkExpectedReceiveAmountUSDC.toReadable(), fromNetworkUSDC.decimals, true)
       }), taskId)
+
 
       if (sourceChainRoutes instanceof SdkException) return sourceChainRoutes
       if (sourceChainRoutes.length === 0) return new SdkException("Source routes not found", SdkExceptionCode.RoutesNotFound)
@@ -74,14 +75,14 @@ export default class EvmCrossChainExtension {
 
       sourceChainRoute = sourceChainRoutes[0]
     }
-    else sourceNetworkSendAmount = Amount.from(destinationNetworkExpectedReceiveAmountUSDT.toReadable(), fromNetworkUSDT.decimals, true)
+    else sourceNetworkSendAmount = Amount.from(destinationNetworkExpectedReceiveAmountUSDC.toReadable(), fromNetworkUSDC.decimals, true)
 
     return this.buildCrossChainTransaction(request, taskId, {
       sourceChainRoute,
       sourceNetworkSendAmount,
       destinationChainRoute,
-      toNetworkUSDT,
-      fromNetworkUSDT,
+      toNetworkUSDC: toNetworkUSDC,
+      fromNetworkUSDC: fromNetworkUSDC,
       from
     })
   }
@@ -94,8 +95,8 @@ export default class EvmCrossChainExtension {
     if (environment instanceof SdkException) return environment
 
     const {
-      fromNetworkUSDT,
-      toNetworkUSDT
+      fromNetworkUSDC,
+      toNetworkUSDC
     } = environment
 
     let sourceNetworkSendAmount: Amount = request.amountIn
@@ -103,9 +104,9 @@ export default class EvmCrossChainExtension {
     let sourceChainRoute: null | SimulatedRoute = null
     let destinationChainRoute: null | SimulatedRoute = null
 
-    if (!Address.equal(request.tokenIn.address, fromNetworkUSDT.address)) {
+    if (!Address.equal(request.tokenIn.address, fromNetworkUSDC.address)) {
       const sourceChainRoutes = await this.parent.fetchRoutes(ExchangeUtils.updateRequest(request, {
-        tokenOut: fromNetworkUSDT
+        tokenOut: fromNetworkUSDC
       }), taskId)
 
 
@@ -121,10 +122,10 @@ export default class EvmCrossChainExtension {
       sourceChainRoute = sourceChainRoutes[0]
     }
 
-    if (!Address.equal(request.tokenOut.address, toNetworkUSDT.address)) {
+    if (!Address.equal(request.tokenOut.address, toNetworkUSDC.address)) {
       const destinationChainRoutes = await this.parent.fetchRoutes(ExchangeUtils.updateRequest(request, {
-        tokenIn: toNetworkUSDT,
-        amountIn: Amount.from((sourceChainRoute?.amountOut ?? request.amountIn).toReadable(), toNetworkUSDT.decimals, true)
+        tokenIn: toNetworkUSDC,
+        amountIn: Amount.from((sourceChainRoute?.amountOut ?? request.amountIn).toReadable(), toNetworkUSDC.decimals, true)
       }), taskId)
 
       if (!this.parent.sdkInstance.verifyTask(taskId)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
@@ -139,8 +140,8 @@ export default class EvmCrossChainExtension {
       sourceChainRoute,
       sourceNetworkSendAmount,
       destinationChainRoute,
-      toNetworkUSDT,
-      fromNetworkUSDT,
+      toNetworkUSDC: toNetworkUSDC,
+      fromNetworkUSDC: fromNetworkUSDC,
       from
     })
   }
@@ -149,8 +150,8 @@ export default class EvmCrossChainExtension {
     const {
       sourceChainRoute,
       destinationChainRoute,
-      toNetworkUSDT,
-      fromNetworkUSDT,
+      toNetworkUSDC,
+      fromNetworkUSDC,
       from,
       sourceNetworkSendAmount
     } = options
@@ -192,7 +193,7 @@ export default class EvmCrossChainExtension {
       destinationNetworkCallData = abiCoder.encode(
         [ "address", "address", "bytes32", "bytes" ],
         [
-          toNetworkUSDT.address.toString(),
+          toNetworkUSDC.address.toString(),
           Address.from(request.destinationAddress || from || Address.zeroAddress).toString(),
           "0x00000000000000000000000000000000000000000000000000000000000000e8",
           destinationChainSwapData.multiCallData
@@ -227,9 +228,9 @@ export default class EvmCrossChainExtension {
 
     sourceNetworkCallData.push(
       bridgeIface.encodeFunctionData("sendStargateV2", [
-        contractAddresses.stargateUSDTPool(request.tokenIn.network),
+        contractAddresses.stargateUSDCPool(request.tokenIn.network),
         stargateNetworksMapping(request.tokenOut.network),
-        !Address.equal(request.tokenIn.address, fromNetworkUSDT.address) ? 0 : Amount.select(sourceChainRoute?.amountIn!, sourceNetworkSendAmount)!.toString(),
+        !Address.equal(request.tokenIn.address, fromNetworkUSDC.address) ? 0 : Amount.select(sourceChainRoute?.amountIn!, sourceNetworkSendAmount)!.toString(),
         destinationNetworkCallData ? contractAddresses.entryPoint(request.tokenOut.network) : (request.destinationAddress || from || Address.zeroAddress).toString(),
         destinationNetworkCallData ? 400_000 : 0,
         destinationNetworkCallData || toUtf8Bytes("")
@@ -293,7 +294,7 @@ export default class EvmCrossChainExtension {
     let amountIn = request.amountIn
 
     if (request.exactInput) {
-      if (Address.equal(request.tokenOut.address, toNetworkUSDT.address)) {
+      if (Address.equal(request.tokenOut.address, toNetworkUSDC.address)) {
         if (sourceChainRoute) amountOut = sourceChainRoute.amountOut
         else amountOut = sourceNetworkSendAmount
       }
@@ -302,7 +303,7 @@ export default class EvmCrossChainExtension {
       }
     }
     else {
-      if (Address.equal(request.tokenIn.address, fromNetworkUSDT.address)) {
+      if (Address.equal(request.tokenIn.address, fromNetworkUSDC.address)) {
         amountIn = sourceNetworkSendAmount
       }
       else {
@@ -327,14 +328,14 @@ export default class EvmCrossChainExtension {
   private async generateEnvironment(request: ExchangeRequest) {
     if (request.tokenIn.network === request.tokenOut.network) return new SdkException("Same network", SdkExceptionCode.SameNetwork)
 
-    const fromNetworkUSDT = contractAddresses.usdtParams(request.tokenIn.network)
-    const toNetworkUSDT = contractAddresses.usdtParams(request.tokenOut.network)
+    const fromNetworkUSDC = contractAddresses.usdcParams(request.tokenIn.network)
+    const toNetworkUSDC = contractAddresses.usdcParams(request.tokenOut.network)
 
-    if (!fromNetworkUSDT || !toNetworkUSDT) return new SdkException("No USDT found on source or destination network", SdkExceptionCode.NoTetherFound)
+    if (!fromNetworkUSDC || !toNetworkUSDC) return new SdkException("No USDC found on source or destination network", SdkExceptionCode.NoTetherFound)
 
     return {
-      fromNetworkUSDT: { ...fromNetworkUSDT, address: Address.from(fromNetworkUSDT.address), network: request.tokenIn.network },
-      toNetworkUSDT: { ...toNetworkUSDT, address: Address.from(toNetworkUSDT.address), network: request.tokenOut.network }
+      fromNetworkUSDC: { ...fromNetworkUSDC, address: Address.from(fromNetworkUSDC.address), network: request.tokenIn.network },
+      toNetworkUSDC: { ...toNetworkUSDC, address: Address.from(toNetworkUSDC.address), network: request.tokenOut.network }
     }
   }
 }

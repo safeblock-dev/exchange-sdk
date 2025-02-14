@@ -55,9 +55,9 @@ export default class PriceStorage {
   private async fetchTokenPrices(network: Network, task: Symbol) {
     if (!this.#prices.has(network.name)) this.#prices.set(network.name, new Map())
 
-    const usdt = contractAddresses.usdtParams(network)
+    const usdc = contractAddresses.usdcParams(network)
 
-    if (!usdt) return
+    if (!usdc) return
 
     const requests: MultiCallRequest[] = this.tokensList
       .list(network)
@@ -109,20 +109,19 @@ export default class PriceStorage {
 
     if (task !== this.#currentFetchingTask) return
 
-    const usdtRate = rates.find((r) => Address.equal(r.token.address, usdt.address))?.rate
-
-    if (!usdtRate) return
+    const usdcRate = rates.find((r) => Address.equal(r.token.address, usdc.address))?.rate
+    if (!usdcRate) return
 
     rates.forEach((rate) => {
-      if (Address.equal(rate.token.address, usdt.address)) {
-        this.#prices.get(network.name)?.set(rate.token.address.toString(), BigInt(10 ** usdt.decimals))
+      if (Address.equal(rate.token.address, usdc.address)) {
+        this.#prices.get(network.name)?.set(rate.token.address.toString(), BigInt(10 ** usdc.decimals))
       }
       else {
-        this.#prices.get(network.name)?.set(rate.token.address.toString(), (rate.rate * BigInt(10 ** rate.token.decimals)) / usdtRate)
+        this.#prices.get(network.name)?.set(rate.token.address.toString(), (rate.rate * BigInt(10 ** rate.token.decimals)) / usdcRate)
       }
     })
 
-    const nativeRate = (BigInt(1e18) * BigInt(1e18)) / usdtRate
+    const nativeRate = (BigInt(1e18) * BigInt(1e18)) / usdcRate
     this.#prices.get(network.name)?.set(Address.wrappedOf(network), nativeRate)
     this.#prices.get(network.name)?.set(Address.zeroAddress, nativeRate)
   }
@@ -135,7 +134,7 @@ export default class PriceStorage {
     const task = forceTask ?? Symbol()
     this.#currentFetchingTask = task
 
-    return Promise.all(this.tokensList.networks.map(network => this.fetchTokenPrices(network, task).catch(() => null))).finally(() => {
+    return Promise.all(this.tokensList.networks.map(async network => await this.fetchTokenPrices(network, task).catch(() => null))).finally(() => {
       this.#fetchingPrices = false
       this.#updateTimestamp = Date.now()
     }).finally(() => this.onUpdated?.(this.#prices))

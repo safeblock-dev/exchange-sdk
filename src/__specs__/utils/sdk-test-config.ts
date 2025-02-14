@@ -1,4 +1,4 @@
-import { Address, base, bnb, mainnet, matic, ton } from "@safeblock/blockchain-utils"
+import { Address, base, bnb, mainnet, matic } from "@safeblock/blockchain-utils"
 import { SdkConfig } from "~/sdk"
 
 const bnbDAI = { // DAI
@@ -25,6 +25,12 @@ const mainnetUSDT = { // USDT
   network: mainnet
 }
 
+const mainnetUSDC = { // USDT
+  address: Address.from("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"),
+  decimals: 6,
+  network: mainnet
+}
+
 const mainnetETH = { // ETH
   address: Address.from(Address.zeroAddress),
   decimals: 18,
@@ -37,6 +43,12 @@ const bnbUSDT = { // USDT
   network: bnb
 }
 
+const bnbUSDC = { // USDT
+  address: Address.from("0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d"),
+  decimals: 18,
+  network: bnb
+}
+
 const bnbDOGE = {
   address: Address.from("0xbA2aE424d960c26247Dd6c32edC70B295c744C43"),
   decimals: 8,
@@ -44,7 +56,7 @@ const bnbDOGE = {
 }
 
 const maticUSDC = {
-  address: Address.from("0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"),
+  address: Address.from("0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359"),
   decimals: 6,
   network: matic
 }
@@ -55,31 +67,12 @@ const maticUSDT = {
   network: matic
 }
 
-const tonUSDT = {
-  address: Address.from("EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs"),
-  decimals: 6,
-  network: ton
-}
-
-const tonNOT = {
-  address: Address.from("EQAvlWFDxGF2lXm67y4yzC17wYKD9A0guwPkMs1gOsM__NOT"),
-  decimals: 9,
-  network: ton
-}
-
-const tonDOGS = {
-  address: Address.from("EQCvxJy4eG8hyHBFsZ7eePxrRsUQSFE_jpptRAYBmcG_DOGS"),
-  decimals: 9,
-  network: ton
-}
-
 const sdkConfig: SdkConfig = {
   routePriceDifferenceLimit: 20,
   tokensList: {
-    [bnb.name]: [bnbUSDT, bnbDAI, bnbDOGE],
+    [bnb.name]: [bnbUSDT, bnbDAI, bnbDOGE, bnbUSDC],
     [matic.name]: [maticUSDC, maticUSDT],
-    [ton.name]: [tonUSDT, tonNOT, tonDOGS],
-    [mainnet.name]: [mainnetUSDT, mainnetETH],
+    [mainnet.name]: [mainnetUSDT, mainnetETH, mainnetUSDC],
     [base.name]: [baseUSDC, baseWETH]
   },
   backend: {
@@ -98,9 +91,8 @@ export {
   maticUSDC,
   mainnetUSDT,
   mainnetETH,
-  tonUSDT,
-  tonNOT,
-  tonDOGS,
+  mainnetUSDC,
+  bnbUSDC,
   baseWETH,
   baseUSDC,
   sdkConfig

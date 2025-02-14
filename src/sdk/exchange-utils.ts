@@ -47,7 +47,7 @@ export class ExchangeUtils {
 
     try {
       return await bridgeContract.quoteV2(
-        contractAddresses.stargateUSDTPool(request.tokenIn.network),
+        contractAddresses.stargateUSDCPool(request.tokenIn.network),
         stargateNetworksMapping(request.tokenOut.network),
         amountLD,
         (request.destinationAddress || address || Address.zeroAddress).toString(),
@@ -108,7 +108,7 @@ export class ExchangeUtils {
     }
   }
 
-  public static async filterRoutesByExpectedOutput(route: SimulatedRoute, priceStorage: PriceStorage, maxDifference = 15) {
+  public static filterRoutesByExpectedOutput(route: SimulatedRoute, priceStorage: PriceStorage, maxDifference = 15) {
     const fromTokenPrice = priceStorage.getPrice(route.tokenIn.network, route.tokenIn.address)
     const toTokenPrice = priceStorage.getPrice(route.tokenOut.network, route.tokenOut.address)
 

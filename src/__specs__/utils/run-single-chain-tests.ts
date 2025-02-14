@@ -4,14 +4,16 @@ import SafeBlock from "~/sdk"
 import { ExchangeRequest, SimulatedRoute } from "~/types"
 
 export default async function runSingleChainTests(request: ExchangeRequest, routes: SimulatedRoute[], sdk: SafeBlock, maxPI = 99) {
+  it("should return at least one route", () => {
+    expect(routes.length).toBeGreaterThan(0)
+  })
+
+  if (routes.length === 0) return
+
   const quota = await sdk.createQuotaFromRoute(Address.from(Address.evmBurnAddress), routes[0])
 
   it("should not return error on correct request", () => {
     expect(routes).not.toBeInstanceOf(Error)
-  })
-
-  it("should return at least one route", () => {
-    expect(routes.length).toBeGreaterThan(0)
   })
 
   it("should compute correct price impact for known tokens", () => {

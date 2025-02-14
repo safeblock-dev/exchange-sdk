@@ -9,23 +9,14 @@ describe("Cross chain exchanges from Ethereum to Ethereum", async () => {
 
   const usdtTokenRequest: ExchangeRequest = {
     exactInput: true,
-    amountIn: new Amount(10, bnbUSDT.decimals, true),
-    amountOut: new Amount(0, maticUSDC.decimals, true),
-    tokenIn: bnbUSDT,
-    tokenOut: maticUSDC,
+    amountIn: new Amount(10, maticUSDC.decimals, true),
+    amountOut: new Amount(0, bnbUSDT.decimals, true),
+    tokenIn: maticUSDC,
+    tokenOut: bnbUSDT,
     slippageReadablePercent: 1
   }
 
   const tokenTokenRequest: ExchangeRequest = {
-    exactInput: true,
-    amountIn: new Amount(10, bnbDAI.decimals, true),
-    amountOut: new Amount(0, maticUSDC.decimals, true),
-    tokenIn: bnbDAI,
-    tokenOut: maticUSDC,
-    slippageReadablePercent: 1
-  }
-
-  const tokenUsdtRequest: ExchangeRequest = {
     exactInput: true,
     amountIn: new Amount(10, bnbDAI.decimals, true),
     amountOut: new Amount(0, maticUSDT.decimals, true),
@@ -34,8 +25,18 @@ describe("Cross chain exchanges from Ethereum to Ethereum", async () => {
     slippageReadablePercent: 1
   }
 
+  const tokenUsdtRequest: ExchangeRequest = {
+    exactInput: true,
+    amountIn: new Amount(10, bnbDAI.decimals, true),
+    amountOut: new Amount(0, maticUSDC.decimals, true),
+    tokenIn: bnbDAI,
+    tokenOut: maticUSDC,
+    slippageReadablePercent: 1
+  }
+
   await sdk.priceStorage.forceRefetch()
   await new Promise(r => setTimeout(r, 5_000))
+
   const allRoutes = [
     await sdk.findRoutes(usdtTokenRequest),
     await sdk.findRoutes(tokenTokenRequest),

@@ -1,4 +1,4 @@
-import { arbitrum, avalanche, bnb, mainnet, optimism, matic, ton, base } from "@safeblock/blockchain-utils"
+import { arbitrum, avalanche, bnb, mainnet, optimism, matic, base } from "@safeblock/blockchain-utils"
 import selectAddress from "@safeblock/blockchain-utils/dist/utils/select-address"
 import { Network } from "ethers"
 
@@ -16,24 +16,24 @@ const contractAddresses = {
     default: "0x00000000000D6FFc74A8feb35aF5827bf57f6786"
   }),
 
-  stargateUSDTPool: (network: Network) => selectAddress(network, {
-    [matic.name]: "0xd47b03ee6d86Cf251ee7860FB2ACf9f91B9fD4d7",
-    [mainnet.name]: "0x933597a323Eb81cAe705C5bC29985172fd5A3973",
-    [avalanche.name]: "0x12dC9256Acc9895B076f6638D628382881e62CeE",
-    [arbitrum.name]: "0xcE8CcA271Ebc0533920C83d39F417ED6A0abB7D0",
-    [optimism.name]: "0x19cFCE47eD54a88614648DC3f19A5980097007dD",
-    default: "0x138EB30f73BC423c6455C53df6D89CB01d9eBc63"
+  stargateUSDCPool: (network: Network) => selectAddress(network, {
+    [matic.name]: "0x9Aa02D4Fae7F58b8E8f34c66E756cC734DAc7fe4",
+    [mainnet.name]: "0xc026395860Db2d07ee33e05fE50ed7bD583189C7",
+    [avalanche.name]: "0x5634c4a5FEd09819E3c46D86A965Dd9447d86e47",
+    [arbitrum.name]: "0xe8CDF27AcD73a434D661C84887215F7598e7d0d3",
+    [optimism.name]: "0xcE8CcA271Ebc0533920C83d39F417ED6A0abB7D0",
+    [base.name]: "0x27a16dc786820B16E5c9028b75B99F6f604b5d26",
+    default: "0x962Bd449E630b0d928f308Ce63f1A21F02576057"
   }),
 
-  usdtParams: (network: Network) => selectAddress(network, {
-    [matic.name]: { address: "0xc2132D05D31c914a87C6611C10748AEb04B58e8F", decimals: 6 },
-    [mainnet.name]: { address: "0xdAC17F958D2ee523a2206206994597C13D831ec7", decimals: 6 },
-    [avalanche.name]: { address: "0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7", decimals: 6 },
-    [arbitrum.name]: { address: "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9", decimals: 6 },
-    [optimism.name]: { address: "0x94b008aA00579c1307B0EF2c499aD98a8ce58e58", decimals: 6 },
-    [base.name]: { address: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", decimals: 6 }, // USDC
-    [ton.name]: { address: "EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs", decimals: 6 },
-    default: { address: "0x55d398326f99059fF775485246999027B3197955", decimals: 18 }
+  usdcParams: (network: Network) => selectAddress(network, {
+    [matic.name]: { address: "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359", decimals: 6 },
+    [mainnet.name]: { address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", decimals: 6 },
+    [avalanche.name]: { address: "0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E", decimals: 6 },
+    [arbitrum.name]: { address: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831", decimals: 6 },
+    [optimism.name]: { address: "0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85", decimals: 6 },
+    [base.name]: { address: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", decimals: 6 },
+    default: { address: "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d", decimals: 18 }
   }),
 
   multicall: (network: Network) => selectAddress(network, {
@@ -59,7 +59,8 @@ function stargateNetworksMapping(network: Network) {
     [matic.name]: 30109,
     [avalanche.name]: 30106,
     [arbitrum.name]: 30110,
-    [optimism.name]: 30111
+    [optimism.name]: 30111,
+    [base.name]: 30184
   }
 
   return map[network.name] ?? -1
