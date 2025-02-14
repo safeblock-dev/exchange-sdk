@@ -150,7 +150,7 @@ export default class EvmConverter extends ExchangeConverter {
     if (!this.sdkInstance.verifyTask(taskId)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 
     const filteredRoutes = simulatedRoutes.filter(route => ExchangeUtils
-      .filterRoutesByExpectedOutput(route, this.sdkInstance.priceStorage, this.sdkInstance.sdkConfig.routePriceDifferenceLimit))
+      .filterRoutesByExpectedOutput(route, this.sdkInstance.priceStorage, this.sdkInstance.sdkConfig.routePriceDifferenceLimit, this.sdkInstance))
 
     this.sdkInstance.sdkConfig.debugLogListener?.(`Fetch: Routes filtering finished, ${ filteredRoutes.length } routes left`)
 

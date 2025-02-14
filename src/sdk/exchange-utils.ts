@@ -3,6 +3,7 @@ import BigNumber from "bignumber.js"
 import { toUtf8Bytes } from "ethers"
 import { BridgeFaucet__factory, LayerZero__factory, Token__factory } from "~/abis/types"
 import { contractAddresses, stargateNetworksMapping } from "~/config"
+import { SdkInstance } from "~/sdk/index"
 import { ExchangeRequest, SimulatedRoute } from "~/types"
 import PriceStorage from "~/utils/price-storage"
 import SdkException, { SdkExceptionCode } from "~/utils/sdk-exception"
@@ -37,7 +38,8 @@ export class ExchangeUtils {
         nativeAmount: new Amount(lzFee, 18, false),
         callData
       }
-    } catch (e: any) {
+    }
+    catch (e: any) {
       return new SdkException(e.toString(), SdkExceptionCode.InternalError)
     }
   }
@@ -54,7 +56,8 @@ export class ExchangeUtils {
         destinationChainCallData || toUtf8Bytes(""),
         destinationChainCallData ? 400_000 : 0
       )
-    } catch (e: any) {
+    }
+    catch (e: any) {
       return new SdkException(e.toString(), SdkExceptionCode.InternalError)
     }
   }
@@ -108,7 +111,7 @@ export class ExchangeUtils {
     }
   }
 
-  public static filterRoutesByExpectedOutput(route: SimulatedRoute, priceStorage: PriceStorage, maxDifference = 15) {
+  public static filterRoutesByExpectedOutput(route: SimulatedRoute, priceStorage: PriceStorage, maxDifference = 15, sdk?: SdkInstance) {
     const fromTokenPrice = priceStorage.getPrice(route.tokenIn.network, route.tokenIn.address)
     const toTokenPrice = priceStorage.getPrice(route.tokenOut.network, route.tokenOut.address)
 
@@ -116,6 +119,15 @@ export class ExchangeUtils {
     const toTokenUSDAmount = route.amountOut.mul(toTokenPrice).toReadableBigNumber()
 
     const change = toTokenUSDAmount.minus(fromTokenUSDAmount).div(fromTokenUSDAmount).multipliedBy(100)
+
+    if (sdk?.sdkConfig.debugLogListener) {
+      sdk.sdkConfig.debugLogListener(
+        `Route filter: ${ route.amountIn.toReadableBigNumber().dp(6).toFixed() } ${ route.tokenIn.address.toString().slice(0, 10) } to `
+        + `${ route.amountOut.toReadableBigNumber().dp(6).toFixed() } ${ route.tokenOut.address.toString().slice(0, 10) } as `
+        + `${ fromTokenUSDAmount.toFixed().slice(0, 6) } USD to ${ toTokenUSDAmount.toFixed().slice(0, 6) } USD with change `
+        + `of ${ change.dp(4).toFixed() }%, result = ${ change.abs().lt(maxDifference) ? "valid" : "invalid" }`
+      )
+    }
 
     return change.abs().lt(maxDifference)
   }
