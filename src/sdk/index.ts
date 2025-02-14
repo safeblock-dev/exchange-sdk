@@ -13,6 +13,8 @@ export type SdkConfig = Partial<{
   tokensList: Record<string, BasicToken[]> | Map<string, BasicToken[]> | [string, BasicToken[]][]
   routePriceDifferenceLimit: number
 
+  debugLogListener?: (...message: any[]) => void
+
   backend: {
     url: string
     headers?: Record<string, string>
@@ -56,7 +58,10 @@ export default class SafeBlock extends SdkInstance {
       this.emitEvent("pricesUpdated", prices)
     })
 
-    this.priceStorage.waitInitialFetch(100).then(() => this.emitEvent("initialized", this))
+    this.priceStorage.waitInitialFetch(100).then(() => {
+      this.emitEvent("initialized", this)
+      this.sdkConfig.debugLogListener?.("Price storage initialization finished")
+    })
   }
 
   public findRoutes(request: ExchangeRequest) {
@@ -98,6 +103,8 @@ export default class SafeBlock extends SdkInstance {
 
       if (!state) this.dexBlacklist.add(id)
     })
+
+    this.sdkConfig.debugLogListener?.("DEX blacklists synced")
   }
 
   public async createQuota(from: Address, request: ExchangeRequest, task: symbol) {

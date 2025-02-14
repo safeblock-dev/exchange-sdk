@@ -37,6 +37,8 @@ export default class EvmCrossChainExtension {
 
     if (environment instanceof SdkException) return environment
 
+    this.parent.sdkInstance.sdkConfig.debugLogListener?.("Preparing for cross-chain RTL trade computation")
+
     const {
       fromNetworkUSDC,
       toNetworkUSDC
@@ -49,19 +51,24 @@ export default class EvmCrossChainExtension {
     let sourceNetworkSendAmount: Amount = request.amountIn
 
     if (!Address.equal(request.tokenOut.address, toNetworkUSDC.address)) {
+      this.parent.sdkInstance.sdkConfig.debugLogListener?.("RTL: computing destination chain routes")
+
       const destinationChainRoutes = await this.parent.fetchRoutes(ExchangeUtils.updateRequest(request, {
         tokenIn: toNetworkUSDC
       }), taskId)
-
 
       if (destinationChainRoutes instanceof SdkException) return destinationChainRoutes
       if (destinationChainRoutes.length === 0) return new SdkException("Destination routes not found", SdkExceptionCode.RoutesNotFound)
 
       destinationNetworkExpectedReceiveAmountUSDC = destinationChainRoutes[0].amountIn
       destinationChainRoute = destinationChainRoutes[0]
+
+      this.parent.sdkInstance.sdkConfig.debugLogListener?.("RTL: at least one destination chain route found")
     }
 
     if (!Address.equal(request.tokenIn.address, fromNetworkUSDC.address)) {
+      this.parent.sdkInstance.sdkConfig.debugLogListener?.("RTL: computing source chain routes")
+
       const sourceChainRoutes = await this.parent.fetchRoutes(ExchangeUtils.updateRequest(request, {
         tokenOut: fromNetworkUSDC,
         amountOut: Amount.from(destinationNetworkExpectedReceiveAmountUSDC.toReadable(), fromNetworkUSDC.decimals, true)
@@ -72,8 +79,9 @@ export default class EvmCrossChainExtension {
       if (sourceChainRoutes.length === 0) return new SdkException("Source routes not found", SdkExceptionCode.RoutesNotFound)
 
       sourceNetworkSendAmount = sourceChainRoutes[0].amountOut
-
       sourceChainRoute = sourceChainRoutes[0]
+
+      this.parent.sdkInstance.sdkConfig.debugLogListener?.("RTL: at least one source chain route found")
     }
     else sourceNetworkSendAmount = Amount.from(destinationNetworkExpectedReceiveAmountUSDC.toReadable(), fromNetworkUSDC.decimals, true)
 
@@ -105,10 +113,11 @@ export default class EvmCrossChainExtension {
     let destinationChainRoute: null | SimulatedRoute = null
 
     if (!Address.equal(request.tokenIn.address, fromNetworkUSDC.address)) {
+      this.parent.sdkInstance.sdkConfig.debugLogListener?.("LTR: computing source chain routes")
+
       const sourceChainRoutes = await this.parent.fetchRoutes(ExchangeUtils.updateRequest(request, {
         tokenOut: fromNetworkUSDC
       }), taskId)
-
 
       if (!this.parent.sdkInstance.verifyTask(taskId)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 
@@ -116,13 +125,15 @@ export default class EvmCrossChainExtension {
 
       if (sourceChainRoutes.length === 0) return new SdkException("Source routes not found", SdkExceptionCode.RoutesNotFound)
 
-
       sourceNetworkSendAmount = sourceChainRoutes[0].amountOut
-
       sourceChainRoute = sourceChainRoutes[0]
+
+      this.parent.sdkInstance.sdkConfig.debugLogListener?.("LTR: at least one source chain route found")
     }
 
     if (!Address.equal(request.tokenOut.address, toNetworkUSDC.address)) {
+      this.parent.sdkInstance.sdkConfig.debugLogListener?.("LTR: computing destination chain routes")
+
       const destinationChainRoutes = await this.parent.fetchRoutes(ExchangeUtils.updateRequest(request, {
         tokenIn: toNetworkUSDC,
         amountIn: Amount.from((sourceChainRoute?.amountOut ?? request.amountIn).toReadable(), toNetworkUSDC.decimals, true)
@@ -134,6 +145,8 @@ export default class EvmCrossChainExtension {
       if (destinationChainRoutes.length === 0) return new SdkException("Destination routes not found", SdkExceptionCode.RoutesNotFound)
 
       destinationChainRoute = destinationChainRoutes[0]
+
+      this.parent.sdkInstance.sdkConfig.debugLogListener?.("LTR: at least one destination chain route found")
     }
 
     return this.buildCrossChainTransaction(request, taskId, {
@@ -155,6 +168,8 @@ export default class EvmCrossChainExtension {
       from,
       sourceNetworkSendAmount
     } = options
+
+    this.parent.sdkInstance.sdkConfig.debugLogListener?.("Build: Preparing for cross-chain transaction final build")
 
     const transferFaucetIface = TransferFaucet__factory.createInterface()
     const bridgeIface = BridgeFaucet__factory.createInterface()
@@ -179,6 +194,7 @@ export default class EvmCrossChainExtension {
       if (Address.isZero(request.tokenIn.address)) nativeAmount = nativeAmount.plus(sourceChainSwap.amountIn.toString())
 
       sourceNetworkCallData.push(sourceChainSwapData.multiSwapData)
+      this.parent.sdkInstance.sdkConfig.debugLogListener?.("Build: Source chain calldata added for execution")
     }
     else {
       if (Address.isZero(request.tokenIn.address)) nativeAmount = nativeAmount.plus(request.amountIn.toString())
@@ -191,7 +207,7 @@ export default class EvmCrossChainExtension {
 
       const abiCoder = new AbiCoder()
       destinationNetworkCallData = abiCoder.encode(
-        [ "address", "address", "bytes32", "bytes" ],
+        ["address", "address", "bytes32", "bytes"],
         [
           toNetworkUSDC.address.toString(),
           Address.from(request.destinationAddress || from || Address.zeroAddress).toString(),
@@ -199,8 +215,11 @@ export default class EvmCrossChainExtension {
           destinationChainSwapData.multiCallData
         ]
       )
+
+      this.parent.sdkInstance.sdkConfig.debugLogListener?.("Build: Destination chain calldata added for execution")
     }
 
+    this.parent.sdkInstance.sdkConfig.debugLogListener?.("Build: Computing bridge quota")
     const bridgeQuota = await ExchangeUtils.computeBridgeQuota(
       request,
       from,
@@ -244,6 +263,8 @@ export default class EvmCrossChainExtension {
       : "0x0000000000000000000000000000000000000000000000000000000000000000"
 
     if (arrivalGas && arrivalGas.nativeAmount.gt(0)) {
+      this.parent.sdkInstance.sdkConfig.debugLogListener?.("Build: Computing arrival gas details and calldata")
+
       const lzIface = LayerZero__factory.createInterface()
 
       sourceNetworkCallData.push(
@@ -264,6 +285,7 @@ export default class EvmCrossChainExtension {
 
     if (!this.parent.sdkInstance.verifyTask(taskId)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 
+    this.parent.sdkInstance.sdkConfig.debugLogListener?.(`Build: Approve verification: ${ approveWanted ? "wanted" : "approved" }`)
     if (approveWanted) {
       executorCallData.push({
         callData: fromTokenContract.interface.encodeFunctionData("approve", [
@@ -313,6 +335,10 @@ export default class EvmCrossChainExtension {
 
     const correctedAmountOut = Amount.from(amountOut.toReadable(), request.tokenOut.decimals, true)
     const correctedAmountIn = Amount.from(amountIn.toReadable(), request.tokenIn.decimals, true)
+
+    this.parent.sdkInstance.sdkConfig.debugLogListener?.("Build: Corrected response amounts")
+    this.parent.sdkInstance.sdkConfig.debugLogListener?.(`Build: amountIn -> from ${ request.amountIn.toReadable() } to ${ correctedAmountIn.toReadable() }`)
+    this.parent.sdkInstance.sdkConfig.debugLogListener?.(`Build: amountOut -> from ${ request.amountOut.toReadable() } to ${ correctedAmountOut.toReadable() }`)
 
     return {
       executorCallData,

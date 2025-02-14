@@ -92,8 +92,13 @@ export default class EvmConverter extends ExchangeConverter {
   }
 
   public async fetchRoutes(request: ExchangeRequest, taskId: symbol): Promise<SdkException | SimulatedRoute[]> {
+    this.sdkInstance.sdkConfig.debugLogListener?.(`Fetch: Loading routes: ${request.amountIn.toReadable()} ${request.tokenIn.address
+      .toString().slice(0, 10)} -> ${request.amountOut.toReadable()} ${request.tokenOut.address.toString().slice(0, 10)}`)
+
     if (ExchangeUtils.isWrapUnwrap(request) && request.tokenIn.network === request.tokenOut.network) {
       const { amountIn, amountOut, tokenIn, tokenOut, destinationAddress, slippageReadablePercent } = request
+
+      this.sdkInstance.sdkConfig.debugLogListener?.("Fetch: Generated fake route for wrap/unwrap transaction")
 
       return [{
         amountIn, amountOut, tokenIn, tokenOut, destinationAddress, slippageReadablePercent,
@@ -125,14 +130,22 @@ export default class EvmConverter extends ExchangeConverter {
       toToken: request.tokenOut
     })
 
+    this.sdkInstance.sdkConfig.debugLogListener?.(`Fetch: Received ${ routes.length } raw routes for single-chain trade`)
+
     if (!this.sdkInstance.verifyTask(taskId)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 
     const simulatedRoutes = await simulateRoutes(request, this.sdkInstance.priceStorage, routes)
 
+    this.sdkInstance.sdkConfig.debugLogListener?.(`Fetch: Raw routes simulation finished, ${ simulatedRoutes.length } routes left`)
+
     if (!this.sdkInstance.verifyTask(taskId)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 
-    return simulatedRoutes.filter(route => ExchangeUtils
+    const filteredRoutes = simulatedRoutes.filter(route => ExchangeUtils
       .filterRoutesByExpectedOutput(route, this.sdkInstance.priceStorage, this.sdkInstance.sdkConfig.routePriceDifferenceLimit))
+
+    this.sdkInstance.sdkConfig.debugLogListener?.(`Fetch: Routes filtering finished, ${ filteredRoutes.length } routes left`)
+
+    return filteredRoutes
   }
 
   public createSingleChainWrapUnwrapTransaction(request: ExchangeRequest): ExchangeQuota | SdkException {
@@ -160,6 +173,8 @@ export default class EvmConverter extends ExchangeConverter {
     const wrappedToken = WrappedToken__factory.connect(wrappedAddress.toString(), ethersProvider(request.tokenIn.network))
 
     if (Address.isZero(request.tokenIn.address)) {
+      this.sdkInstance.sdkConfig.debugLogListener?.("Generating wrap transaction")
+
       callData.push({
         callData: wrappedToken.interface.encodeFunctionData("deposit"),
         value: amount,
@@ -169,6 +184,8 @@ export default class EvmConverter extends ExchangeConverter {
       })
     }
     else {
+      this.sdkInstance.sdkConfig.debugLogListener?.("Generating unwrap transaction")
+
       callData.push({
         callData: wrappedToken.interface.encodeFunctionData("withdraw", [
           amount.toBigInt()
