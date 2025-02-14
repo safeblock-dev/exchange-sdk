@@ -9,7 +9,7 @@ import TokensList, { BasicToken } from "~/utils/tokens-list"
 
 
 export default class PriceStorage {
-  readonly #prices: Map<string, Map<string, bigint>>
+  readonly _prices: Map<string, Map<string, bigint>>
 
   #updateTimestamp = 0
   #fetchingPrices = false
@@ -22,7 +22,7 @@ export default class PriceStorage {
     private readonly updateInterval: number = 6000,
     private readonly onUpdated?: (prices: Map<string, Map<string, bigint>>) => void
   ) {
-    this.#prices = new Map()
+    this._prices = new Map()
 
     this.pricesWorker = this.pricesWorker.bind(this)
     this.forceRefetch = this.forceRefetch.bind(this)
@@ -53,7 +53,7 @@ export default class PriceStorage {
   }
 
   private async fetchTokenPrices(network: Network, task: Symbol) {
-    if (!this.#prices.has(network.name)) this.#prices.set(network.name, new Map())
+    if (!this._prices.has(network.name)) this._prices.set(network.name, new Map())
 
     const usdc = contractAddresses.usdcParams(network)
 
@@ -114,16 +114,16 @@ export default class PriceStorage {
 
     rates.forEach((rate) => {
       if (Address.equal(rate.token.address, usdc.address)) {
-        this.#prices.get(network.name)?.set(rate.token.address.toString(), BigInt(10 ** usdc.decimals))
+        this._prices.get(network.name)?.set(rate.token.address.toString(), BigInt(10 ** usdc.decimals))
       }
       else {
-        this.#prices.get(network.name)?.set(rate.token.address.toString(), (rate.rate * BigInt(10 ** rate.token.decimals)) / usdcRate)
+        this._prices.get(network.name)?.set(rate.token.address.toString(), (rate.rate * BigInt(10 ** rate.token.decimals)) / usdcRate)
       }
     })
 
     const nativeRate = (BigInt(1e18) * BigInt(1e18)) / usdcRate
-    this.#prices.get(network.name)?.set(Address.wrappedOf(network), nativeRate)
-    this.#prices.get(network.name)?.set(Address.zeroAddress, nativeRate)
+    this._prices.get(network.name)?.set(Address.wrappedOf(network), nativeRate)
+    this._prices.get(network.name)?.set(Address.zeroAddress, nativeRate)
   }
 
   private async pricesWorker(forceTask?: symbol) {
@@ -137,7 +137,7 @@ export default class PriceStorage {
     return Promise.all(this.tokensList.networks.map(async network => await this.fetchTokenPrices(network, task).catch(() => null))).finally(() => {
       this.#fetchingPrices = false
       this.#updateTimestamp = Date.now()
-    }).finally(() => this.onUpdated?.(this.#prices))
+    }).finally(() => this.onUpdated?.(this._prices))
   }
 
   public async forceRefetch() {
@@ -186,6 +186,6 @@ export default class PriceStorage {
 
     if (!existingToken) return new Amount(0, 0, false)
 
-    return Amount.from(this.#prices.get(network.name)?.get(tokenAddress.toString()) ?? BigInt(0), existingToken.decimals, false)
+    return Amount.from(this._prices.get(network.name)?.get(tokenAddress.toString()) ?? BigInt(0), existingToken.decimals, false)
   }
 }
