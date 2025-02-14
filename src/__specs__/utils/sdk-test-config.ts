@@ -69,7 +69,6 @@ const maticUSDT = {
 
 const sdkConfig: SdkConfig = {
   routePriceDifferenceLimit: 20,
-  debugLogListener: message => console.log(message),
   tokensList: {
     [bnb.name]: [bnbUSDT, bnbDAI, bnbDOGE, bnbUSDC],
     [matic.name]: [maticUSDC, maticUSDT],
