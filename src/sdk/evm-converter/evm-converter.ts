@@ -92,8 +92,8 @@ export default class EvmConverter extends ExchangeConverter {
   }
 
   public async fetchRoutes(request: ExchangeRequest, taskId: symbol): Promise<SdkException | SimulatedRoute[]> {
-    this.sdkInstance.sdkConfig.debugLogListener?.(`Fetch: Loading routes: ${request.amountIn.toReadable()} ${request.tokenIn.address
-      .toString().slice(0, 10)} -> ${request.amountOut.toReadable()} ${request.tokenOut.address.toString().slice(0, 10)}`)
+    this.sdkInstance.sdkConfig.debugLogListener?.(`Fetch: Loading routes: ${ request.amountIn.toReadable() } ${ request.tokenIn.address
+      .toString().slice(0, 10) } -> ${ request.amountOut.toReadable() } ${ request.tokenOut.address.toString().slice(0, 10) }`)
 
     if (ExchangeUtils.isWrapUnwrap(request) && request.tokenIn.network === request.tokenOut.network) {
       const { amountIn, amountOut, tokenIn, tokenOut, destinationAddress, slippageReadablePercent } = request
@@ -137,6 +137,15 @@ export default class EvmConverter extends ExchangeConverter {
     const simulatedRoutes = await simulateRoutes(request, this.sdkInstance.priceStorage, routes)
 
     this.sdkInstance.sdkConfig.debugLogListener?.(`Fetch: Raw routes simulation finished, ${ simulatedRoutes.length } routes left`)
+    if (this.sdkInstance.sdkConfig.debugLogListener) {
+      simulatedRoutes.slice(0, 4).forEach((route, i) => {
+        this.sdkInstance.sdkConfig.debugLogListener?.(`Simulated route ${ String(i).padStart(2, "0") } amountIn = ${ route.amountIn
+          .toReadable() }, amountOut = ${ route.amountOut.toReadable() }`)
+      })
+
+      if (simulatedRoutes.length > 4) this.sdkInstance.sdkConfig
+        .debugLogListener?.(`... and ${ simulatedRoutes.length - 4 } more routes hidden`)
+    }
 
     if (!this.sdkInstance.verifyTask(taskId)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 
