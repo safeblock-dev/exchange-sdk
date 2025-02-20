@@ -108,9 +108,9 @@ export class ExchangeUtils {
     const uniswapV2StepGasUsage = 350_000
     const receiveNativeGasUsage = 75_000
 
-    if (route.length === 0) return new BigNumber(0)
-
     let routeGasUsage = new BigNumber(75_000)
+
+    if (route.length === 0) return routeGasUsage
     route.forEach(step => {
       routeGasUsage = routeGasUsage.plus(step.version === "PAIR_VERSION_UNISWAP_V3" ? uniswapV3StepGasUsage : uniswapV2StepGasUsage)
     })
