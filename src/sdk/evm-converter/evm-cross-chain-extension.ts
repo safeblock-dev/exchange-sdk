@@ -7,6 +7,7 @@ import evmBuildRawTransaction from "~/sdk/evm-converter/evm-build-raw-transactio
 import EvmConverter from "~/sdk/evm-converter/evm-converter"
 import { ExchangeUtils } from "~/sdk/exchange-utils"
 import { ExchangeQuota, ExchangeRequest, ExecutorCallData, SimulatedRoute } from "~/types"
+import ArrayUtils from "~/utils/array-utils"
 import SdkException, { SdkExceptionCode } from "~/utils/sdk-exception"
 import { BasicToken } from "~/utils/tokens-list"
 
@@ -342,6 +343,7 @@ export default class EvmCrossChainExtension {
 
     return {
       executorCallData,
+      exchangeRoute: ArrayUtils.nonNullable([sourceChainRoute?.originalRoute, destinationChainRoute?.originalRoute]),
       amountOut: correctedAmountOut,
       amountIn: correctedAmountIn,
       tokenIn: request.tokenIn,

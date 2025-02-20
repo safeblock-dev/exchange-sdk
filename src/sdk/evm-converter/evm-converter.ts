@@ -64,6 +64,7 @@ export default class EvmConverter extends ExchangeConverter {
 
     return {
       executorCallData: callData,
+      exchangeRoute: [options.route.originalRoute],
       amountIn: options.route.amountIn,
       amountOut: options.route.amountOut,
       tokenIn: options.route.tokenIn,
@@ -209,6 +210,7 @@ export default class EvmConverter extends ExchangeConverter {
     return {
       executorCallData: callData,
       slippageReadable: 0,
+      exchangeRoute: [],
       tokenIn: request.tokenIn,
       tokenOut: request.tokenOut,
       amountIn: amount,

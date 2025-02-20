@@ -103,6 +103,7 @@ export type ExecutorCallData = {
 
 export interface ExchangeQuota {
   executorCallData: ExecutorCallData[]
+  exchangeRoute: [] | [RouteStep[]] | [RouteStep[], RouteStep[]]
   amountIn: Amount
   amountOut: Amount
   tokenIn: BasicToken

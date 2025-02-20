@@ -4,7 +4,7 @@ import { toUtf8Bytes } from "ethers"
 import { BridgeFaucet__factory, LayerZero__factory, Token__factory } from "~/abis/types"
 import { contractAddresses, stargateNetworksMapping } from "~/config"
 import { SdkInstance } from "~/sdk/index"
-import { ExchangeRequest, SimulatedRoute } from "~/types"
+import { ExchangeQuota, ExchangeRequest, SimulatedRoute } from "~/types"
 import PriceStorage from "~/utils/price-storage"
 import SdkException, { SdkExceptionCode } from "~/utils/sdk-exception"
 import { BasicToken } from "~/utils/tokens-list"
@@ -80,11 +80,22 @@ export class ExchangeUtils {
     }
   }
 
-  public static isWrapUnwrap(request: ExchangeRequest | SimulatedRoute) {
-    const addresses = [request.tokenIn.address, request.tokenOut.address]
+  public static isWrap(request: ExchangeRequest | SimulatedRoute | ExchangeQuota) {
+    if (request.tokenIn.network.name !== request.tokenOut.network.name) return false
 
-    return addresses.some(address => Address.equal(address, Address.wrappedOf(request.tokenIn.network)))
-      && addresses.some(address => Address.isZero(address))
+    return request.tokenIn.address.equalTo(Address.zeroAddress)
+      && request.tokenOut.address.equalTo(Address.wrappedOf(request.tokenIn.network))
+  }
+
+  public static isUnwrap(request: ExchangeRequest | SimulatedRoute | ExchangeQuota) {
+    if (request.tokenIn.network.name !== request.tokenOut.network.name) return false
+
+    return request.tokenIn.address.equalTo(Address.wrappedOf(request.tokenOut.network))
+      && request.tokenOut.address.equalTo(Address.zeroAddress)
+  }
+
+  public static isWrapUnwrap(request: ExchangeRequest | SimulatedRoute | ExchangeQuota) {
+    return this.isWrap(request) || this.isUnwrap(request)
   }
 
   public static computePriceImpact(request: ExchangeRequest, amountIn: Amount, amountOut: Amount, priceStorage: PriceStorage) {
