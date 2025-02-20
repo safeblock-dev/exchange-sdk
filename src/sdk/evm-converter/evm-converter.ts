@@ -62,7 +62,7 @@ export default class EvmConverter extends ExchangeConverter {
       network: options.route.tokenIn.network
     })
 
-    return {
+    const rawQuota = {
       executorCallData: callData,
       exchangeRoute: [options.route.originalRoute],
       amountIn: options.route.amountIn,
@@ -71,6 +71,11 @@ export default class EvmConverter extends ExchangeConverter {
       tokenOut: options.route.tokenOut,
       slippageReadable: options.route.slippageReadablePercent,
       priceImpact: options.route.priceImpactPercent
+    }
+
+    return {
+      ...rawQuota,
+      estimatedGasUsage: ExchangeUtils.computeQuotaExecutionGasUsage(rawQuota),
     }
   }
 
@@ -207,7 +212,7 @@ export default class EvmConverter extends ExchangeConverter {
       })
     }
 
-    return {
+    const rawQuota = {
       executorCallData: callData,
       slippageReadable: 0,
       exchangeRoute: [],
@@ -216,6 +221,11 @@ export default class EvmConverter extends ExchangeConverter {
       amountIn: amount,
       amountOut: amount,
       priceImpact: 0
+    }
+
+    return {
+      ...rawQuota,
+      estimatedGasUsage: ExchangeUtils.computeQuotaExecutionGasUsage(rawQuota)
     }
   }
 }

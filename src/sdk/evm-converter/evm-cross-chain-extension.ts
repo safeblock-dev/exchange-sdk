@@ -341,7 +341,7 @@ export default class EvmCrossChainExtension {
     this.parent.sdkInstance.sdkConfig.debugLogListener?.(`Build: amountIn -> from ${ request.amountIn.toReadable() } to ${ correctedAmountIn.toReadable() }`)
     this.parent.sdkInstance.sdkConfig.debugLogListener?.(`Build: amountOut -> from ${ request.amountOut.toReadable() } to ${ correctedAmountOut.toReadable() }`)
 
-    return {
+    const rawQuota: Omit<ExchangeQuota, "estimatedGasUsage"> = {
       executorCallData,
       exchangeRoute: ArrayUtils.nonNullable([sourceChainRoute?.originalRoute, destinationChainRoute?.originalRoute]),
       amountOut: correctedAmountOut,
@@ -350,7 +350,12 @@ export default class EvmCrossChainExtension {
       tokenOut: request.tokenOut,
       slippageReadable: request.slippageReadablePercent,
       priceImpact: ExchangeUtils.computePriceImpact(request, correctedAmountIn, correctedAmountOut, this.parent.sdkInstance.priceStorage)
-    } as ExchangeQuota
+    }
+
+    return {
+      ...rawQuota,
+      estimatedGasUsage: ExchangeUtils.computeQuotaExecutionGasUsage(rawQuota)
+    }
   }
 
   private async generateEnvironment(request: ExchangeRequest) {
