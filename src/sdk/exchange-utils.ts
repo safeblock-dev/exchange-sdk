@@ -75,7 +75,7 @@ export class ExchangeUtils {
 
       const allowance = new BigNumber((await tokenContract.allowance(ownerAddress.toString(), contractAddresses.entryPoint(token.network), {})).toString())
 
-      if (allowance.lt(spendAmount.toString())) approveWanted = new Amount(spendAmount.toInteger(), token.decimals, false)
+      if (allowance.lt(spendAmount.toString())) approveWanted = new Amount(spendAmount.toReadableBigNumber(), token.decimals, true)
     }
 
     return {
