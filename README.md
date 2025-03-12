@@ -35,7 +35,16 @@ const sdk = new SafeBlock({
 
   // Optional, default is 20, will skip all routes that has price impact
   // more than 20 percents
-  routePriceDifferenceLimit: 20, 
+  routePriceDifferenceLimit: 20,
+
+  // Soft limit for routes count in batch call,
+  // will try to retrieve as much as possible direct routes
+  // and 3 more indirect routes
+  routesCountLimit: 3,
+  
+  // Maximum routes in single batch call, default is 30
+  // more than 40 can lead to unpredictable exceptions
+  routesCountHardLimit: 30,
   
   backend: {
     url: "https://api.safeblock.com",

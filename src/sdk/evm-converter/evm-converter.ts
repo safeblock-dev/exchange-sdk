@@ -75,7 +75,7 @@ export default class EvmConverter extends ExchangeConverter {
 
     return {
       ...rawQuota,
-      estimatedGasUsage: ExchangeUtils.computeQuotaExecutionGasUsage(rawQuota),
+      estimatedGasUsage: ExchangeUtils.computeQuotaExecutionGasUsage(rawQuota)
     }
   }
 
@@ -132,15 +132,16 @@ export default class EvmConverter extends ExchangeConverter {
       backendUrl: this.sdkInstance.sdkConfig.backend?.url ?? publicBackendURL,
       headers: this.sdkInstance.sdkConfig.backend?.headers,
       bannedDexIds: this.sdkInstance.dexBlacklist.toArray(),
+      limit: this.sdkInstance.sdkConfig.routesCountLimit ?? 3,
       fromToken: request.tokenIn,
       toToken: request.tokenOut
     })
 
-    this.sdkInstance.sdkConfig.debugLogListener?.(`Fetch: Received ${ routes.length } raw routes for single-chain trade`)
+    this.sdkInstance.sdkConfig.debugLogListener?.(`Fetch: Received ${ routes.length } (${ this.sdkInstance.sdkConfig.routesCountHardLimit } limit) raw routes for single-chain trade`)
 
     if (!this.sdkInstance.verifyTask(taskId)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 
-    const simulatedRoutes = await simulateRoutes(request, this.sdkInstance.priceStorage, routes)
+    const simulatedRoutes = await simulateRoutes(request, this.sdkInstance.priceStorage, routes.slice(0, this.sdkInstance.sdkConfig.routesCountHardLimit ?? 30))
 
     this.sdkInstance.sdkConfig.debugLogListener?.(`Fetch: Raw routes simulation finished, ${ simulatedRoutes.length } routes left`)
     if (this.sdkInstance.sdkConfig.debugLogListener) {

@@ -13,7 +13,10 @@ export type SdkConfig = Partial<{
   tokensList: Record<string, BasicToken[]> | Map<string, BasicToken[]> | [string, BasicToken[]][]
   routePriceDifferenceLimit: number
 
-  debugLogListener?: (...message: any[]) => void
+  debugLogListener: (...message: any[]) => void
+
+  routesCountLimit: number
+  routesCountHardLimit: number
 
   backend: {
     url: string
