@@ -225,7 +225,8 @@ export default class EvmCrossChainExtension {
       request,
       from,
       sourceNetworkSendAmount.toString(),
-      destinationNetworkCallData
+      destinationNetworkCallData,
+      this.parent.sdkInstance.sdkConfig
     )
 
     if (!this.parent.sdkInstance.verifyTask(taskId)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
@@ -234,7 +235,7 @@ export default class EvmCrossChainExtension {
 
     nativeAmount = nativeAmount.plus(bridgeQuota.valueToSend.toString())
 
-    const arrivalGas = await ExchangeUtils.computeArrivalGasData(request, from)
+    const arrivalGas = await ExchangeUtils.computeArrivalGasData(request, from, this.parent.sdkInstance.sdkConfig)
 
     if (!this.parent.sdkInstance.verifyTask(taskId)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 
@@ -251,7 +252,7 @@ export default class EvmCrossChainExtension {
         contractAddresses.stargateUSDCPool(request.tokenIn.network),
         stargateNetworksMapping(request.tokenOut.network),
         !Address.equal(request.tokenIn.address, fromNetworkUSDC.address) ? 0 : Amount.select(sourceChainRoute?.amountIn!, sourceNetworkSendAmount)!.toString(),
-        destinationNetworkCallData ? contractAddresses.entryPoint(request.tokenOut.network) : (request.destinationAddress || from || Address.zeroAddress).toString(),
+        destinationNetworkCallData ? contractAddresses.entryPoint(request.tokenOut.network, this.parent.sdkInstance.sdkConfig) : (request.destinationAddress || from || Address.zeroAddress).toString(),
         destinationNetworkCallData ? 400_000 : 0,
         destinationNetworkCallData || toUtf8Bytes("")
       ])
@@ -282,7 +283,12 @@ export default class EvmCrossChainExtension {
     const {
       tokenContract: fromTokenContract,
       approveWanted
-    } = await ExchangeUtils.getTokenTransferDetails(request.tokenIn, from || Address.from(Address.zeroAddress), request.amountIn)
+    } = await ExchangeUtils.getTokenTransferDetails(
+      request.tokenIn,
+      from || Address.from(Address.zeroAddress),
+      request.amountIn,
+      this.parent.sdkInstance.sdkConfig
+    )
 
     if (!this.parent.sdkInstance.verifyTask(taskId)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 
@@ -290,7 +296,7 @@ export default class EvmCrossChainExtension {
     if (approveWanted) {
       executorCallData.push({
         callData: fromTokenContract.interface.encodeFunctionData("approve", [
-          contractAddresses.entryPoint(request.tokenIn.network),
+          contractAddresses.entryPoint(request.tokenIn.network, this.parent.sdkInstance.sdkConfig),
           request.amountIn.toBigInt()
         ]),
         gasLimitMultiplier: 1,
@@ -307,7 +313,7 @@ export default class EvmCrossChainExtension {
       ]),
       gasLimitMultiplier: 1.2,
       value: new Amount(nativeAmount.toFixed(), 18, false),
-      to: Address.from(contractAddresses.entryPoint(request.tokenIn.network)),
+      to: Address.from(contractAddresses.entryPoint(request.tokenIn.network, this.parent.sdkInstance.sdkConfig)),
       network: request.tokenIn.network
     })
 

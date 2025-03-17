@@ -9,6 +9,8 @@ import PriceStorage from "~/utils/price-storage"
 import SdkException, { SdkExceptionCode } from "~/utils/sdk-exception"
 import TokensList, { BasicToken } from "~/utils/tokens-list"
 
+type TAddressesList = {[p: string]: string} & {default: string}
+
 export type SdkConfig = Partial<{
   tokensList: Record<string, BasicToken[]> | Map<string, BasicToken[]> | [string, BasicToken[]][]
   routePriceDifferenceLimit: number
@@ -17,6 +19,11 @@ export type SdkConfig = Partial<{
 
   routesCountLimit: number
   routesCountHardLimit: number
+
+  contractAddresses: Partial<{
+    entryPoint: TAddressesList
+    quoter: TAddressesList
+  }>
 
   backend: {
     url: string

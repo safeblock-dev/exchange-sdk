@@ -3,7 +3,7 @@ import BigNumber from "bignumber.js"
 import { toUtf8Bytes } from "ethers"
 import { BridgeFaucet__factory, LayerZero__factory, Token__factory } from "~/abis/types"
 import { contractAddresses, stargateNetworksMapping } from "~/config"
-import { SdkInstance } from "~/sdk/index"
+import { SdkConfig, SdkInstance } from "~/sdk/index"
 import { ExchangeQuota, ExchangeRequest, RouteStep, SimulatedRoute } from "~/types"
 import PriceStorage from "~/utils/price-storage"
 import SdkException, { SdkExceptionCode } from "~/utils/sdk-exception"
@@ -21,11 +21,11 @@ export class ExchangeUtils {
     return { fee: 0, ...token }
   }
 
-  public static async computeArrivalGasData(request: ExchangeRequest, address: Address) {
+  public static async computeArrivalGasData(request: ExchangeRequest, address: Address, config?: SdkConfig) {
     try {
       if (!request.arrivalGasAmount) return null
 
-      const lzContract = LayerZero__factory.connect(contractAddresses.entryPoint(request.tokenIn.network), ethersProvider(request.tokenIn.network))
+      const lzContract = LayerZero__factory.connect(contractAddresses.entryPoint(request.tokenIn.network, config), ethersProvider(request.tokenIn.network))
 
       const nativeCap = new BigNumber((await lzContract.getNativeSendCap(stargateNetworksMapping(request.tokenOut.network))).toString())
 
@@ -49,8 +49,8 @@ export class ExchangeUtils {
     }
   }
 
-  public static async computeBridgeQuota(request: ExchangeRequest, address: Address, amountLD: string, destinationChainCallData: string | null) {
-    const bridgeContract = BridgeFaucet__factory.connect(contractAddresses.entryPoint(request.tokenIn.network), ethersProvider(request.tokenIn.network))
+  public static async computeBridgeQuota(request: ExchangeRequest, address: Address, amountLD: string, destinationChainCallData: string | null, config?: SdkConfig) {
+    const bridgeContract = BridgeFaucet__factory.connect(contractAddresses.entryPoint(request.tokenIn.network, config), ethersProvider(request.tokenIn.network))
 
     try {
       return await bridgeContract.quoteV2(
@@ -67,13 +67,13 @@ export class ExchangeUtils {
     }
   }
 
-  public static async getTokenTransferDetails(token: BasicToken, ownerAddress: Address, spendAmount: Amount) {
+  public static async getTokenTransferDetails(token: BasicToken, ownerAddress: Address, spendAmount: Amount, config?: SdkConfig) {
     const tokenContract = Token__factory.connect(token.address.toString(), ethersProvider(token.network))
 
     let approveWanted: Amount = new Amount(0, token.decimals, false)
     if (!Address.isZero(token.address) && ownerAddress) {
 
-      const allowance = new BigNumber((await tokenContract.allowance(ownerAddress.toString(), contractAddresses.entryPoint(token.network), {})).toString())
+      const allowance = new BigNumber((await tokenContract.allowance(ownerAddress.toString(), contractAddresses.entryPoint(token.network, config), {})).toString())
 
       if (allowance.lt(spendAmount.toString())) approveWanted = new Amount(spendAmount.toReadableBigNumber(), token.decimals, true)
     }

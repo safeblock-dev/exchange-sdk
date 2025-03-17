@@ -35,10 +35,10 @@ export default class EvmConverter extends ExchangeConverter {
         tokenContract: fromTokenContract,
         approveWanted,
         approveAmount
-      } = await ExchangeUtils.getTokenTransferDetails(options.route.tokenIn, options.from, options.route.amountIn)
+      } = await ExchangeUtils.getTokenTransferDetails(options.route.tokenIn, options.from, options.route.amountIn, this.sdkInstance.sdkConfig)
 
       if (approveWanted) approveCallData = fromTokenContract.interface.encodeFunctionData("approve", [
-        contractAddresses.entryPoint(options.route.tokenIn.network),
+        contractAddresses.entryPoint(options.route.tokenIn.network, this.sdkInstance.sdkConfig),
         approveAmount.toBigInt()
       ])
     }
@@ -58,7 +58,7 @@ export default class EvmConverter extends ExchangeConverter {
       callData: multiSwapCallData.multiCallData,
       gasLimitMultiplier: 1.2,
       value: Address.isZero(options.route.tokenIn.address) ? options.route.amountIn : new Amount(0, 18, false),
-      to: Address.from(contractAddresses.entryPoint(options.route.tokenIn.network)),
+      to: Address.from(contractAddresses.entryPoint(options.route.tokenIn.network, this.sdkInstance.sdkConfig)),
       network: options.route.tokenIn.network
     })
 
@@ -141,7 +141,12 @@ export default class EvmConverter extends ExchangeConverter {
 
     if (!this.sdkInstance.verifyTask(taskId)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 
-    const simulatedRoutes = await simulateRoutes(request, this.sdkInstance.priceStorage, routes.slice(0, this.sdkInstance.sdkConfig.routesCountHardLimit ?? 30))
+    const simulatedRoutes = await simulateRoutes(
+      request,
+      this.sdkInstance.priceStorage,
+      routes.slice(0, this.sdkInstance.sdkConfig.routesCountHardLimit ?? 30),
+      this.sdkInstance.sdkConfig
+    )
 
     this.sdkInstance.sdkConfig.debugLogListener?.(`Fetch: Raw routes simulation finished, ${ simulatedRoutes.length } routes left`)
     if (this.sdkInstance.sdkConfig.debugLogListener) {

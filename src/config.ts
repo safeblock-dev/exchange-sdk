@@ -1,14 +1,15 @@
 import { arbitrum, avalanche, bnb, mainnet, optimism, matic, base } from "@safeblock/blockchain-utils"
 import selectAddress from "@safeblock/blockchain-utils/dist/utils/select-address"
 import { Network } from "ethers"
+import { SdkConfig } from "~/sdk"
 
 
 const contractAddresses = {
-  entryPoint: (network: Network) => selectAddress(network, {
+  entryPoint: (network: Network, config?: SdkConfig) => selectAddress(network, config?.contractAddresses?.entryPoint ?? {
     default: "0x9AE4De30ad3943e3b65E5DF41e8FB8CC0F0213d7"
   }),
 
-  quoter: (network: Network) => selectAddress(network, {
+  quoter: (network: Network, config?: SdkConfig) => selectAddress(network, config?.contractAddresses?.quoter ?? {
     default: "0x13e6aC30fC8E37792F18b1e3D75B8266B0A93734"
   }),
 
