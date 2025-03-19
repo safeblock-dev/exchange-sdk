@@ -266,6 +266,10 @@ export default class EvmCrossChainExtension {
 
     if (arrivalGas && arrivalGas.nativeAmount.gt(0)) {
       this.parent.sdkInstance.sdkConfig.debugLogListener?.("Build: Computing arrival gas details and calldata")
+      this.parent.sdkInstance.sdkConfig.debugLogListener?.("Build: Arrival gas details:", {
+        nativeAmount: arrivalGas.nativeAmount.toBigNumber().toFixed(),
+        callData: arrivalGas.callData
+      })
 
       const lzIface = LayerZero__factory.createInterface()
 

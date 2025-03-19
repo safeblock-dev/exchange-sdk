@@ -23,15 +23,23 @@ export class ExchangeUtils {
 
   public static async computeArrivalGasData(request: ExchangeRequest, address: Address, config?: SdkConfig) {
     try {
-      if (!request.arrivalGasAmount) return null
+      if (!request.arrivalGasAmount || request.arrivalGasAmount.toReadableBigNumber().lte(0)) return null
+
+      config?.debugLogListener?.("ArrivalGas: Conditions met")
 
       const lzContract = LayerZero__factory.connect(contractAddresses.entryPoint(request.tokenIn.network, config), ethersProvider(request.tokenIn.network))
 
       const nativeCap = new BigNumber((await lzContract.getNativeSendCap(stargateNetworksMapping(request.tokenOut.network))).toString())
 
+      config?.debugLogListener?.("ArrivalGas: Native cap:", nativeCap.toFixed())
+
       const amount = nativeCap.lt(request.arrivalGasAmount.toString()) ? new Amount(nativeCap.toNumber(), 18, false) : request.arrivalGasAmount
 
+      config?.debugLogListener?.("ArrivalGas: Amount updated:", amount.toBigNumber().toFixed())
+
       const lzFee = await lzContract.estimateFee(stargateNetworksMapping(request.tokenOut.network), amount.toBigInt(), Address.zeroAddress)
+
+      config?.debugLogListener?.("ArrivalGas: LzFee get:", lzFee.toString())
 
       const callData = lzContract.interface.encodeFunctionData("sendDeposit", [
         stargateNetworksMapping(request.tokenOut.network),
