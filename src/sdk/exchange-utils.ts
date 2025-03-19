@@ -31,15 +31,15 @@ export class ExchangeUtils {
 
       const nativeCap = new BigNumber((await lzContract.getNativeSendCap(stargateNetworksMapping(request.tokenOut.network))).toString())
 
-      config?.debugLogListener?.("ArrivalGas: Native cap:", nativeCap.toFixed())
+      config?.debugLogListener?.("ArrivalGas: Native cap: " + nativeCap.toFixed())
 
       const amount = nativeCap.lt(request.arrivalGasAmount.toString()) ? new Amount(nativeCap.toNumber(), 18, false) : request.arrivalGasAmount
 
-      config?.debugLogListener?.("ArrivalGas: Amount updated:", amount.toBigNumber().toFixed())
+      config?.debugLogListener?.("ArrivalGas: Amount updated: " + amount.toBigNumber().toFixed())
 
       const lzFee = await lzContract.estimateFee(stargateNetworksMapping(request.tokenOut.network), amount.toBigInt(), Address.zeroAddress)
 
-      config?.debugLogListener?.("ArrivalGas: LzFee get:", lzFee.toString())
+      config?.debugLogListener?.("ArrivalGas: LzFee get: " + lzFee.toString())
 
       const callData = lzContract.interface.encodeFunctionData("sendDeposit", [
         stargateNetworksMapping(request.tokenOut.network),
