@@ -1,7 +1,7 @@
 import { Address, Amount } from "@safeblock/blockchain-utils"
 import BigNumber from "bignumber.js"
 import { AbiCoder, toUtf8Bytes } from "ethers"
-import { BridgeFaucet__factory, Entrypoint__factory, LayerZero__factory, TransferFaucet__factory } from "~/abis/types"
+import { BridgeFaucet__factory, Entrypoint__factory, TransferFaucet__factory } from "~/abis/types"
 import { contractAddresses, stargateNetworksMapping } from "~/config"
 import evmBuildRawTransaction from "~/sdk/evm-converter/evm-build-raw-transaction"
 import EvmConverter from "~/sdk/evm-converter/evm-converter"
@@ -268,15 +268,7 @@ export default class EvmCrossChainExtension {
       this.parent.sdkInstance.sdkConfig.debugLogListener?.("Build: Computing arrival gas details and calldata")
       this.parent.sdkInstance.sdkConfig.debugLogListener?.("Build: Arrival gas native amount: " + arrivalGas.nativeAmount.toBigNumber().toFixed())
 
-      const lzIface = LayerZero__factory.createInterface()
-
-      sourceNetworkCallData.push(
-        lzIface.encodeFunctionData("sendDeposit", [
-          stargateNetworksMapping(request.tokenOut.network),
-          arrivalGas.nativeAmount.toBigInt(),
-          Address.from(request.destinationAddress || from || Address.zeroAddress).toString()
-        ])
-      )
+      sourceNetworkCallData.push(arrivalGas.callData)
     }
 
     const executorCallData: ExecutorCallData[] = []
