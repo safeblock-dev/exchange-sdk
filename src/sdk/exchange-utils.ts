@@ -112,11 +112,11 @@ export class ExchangeUtils {
   }
 
   private static computeOnchainTradeGasUsage(route: RouteStep[], receiveNative = false) {
-    const uniswapV3StepGasUsage = 450_000
-    const uniswapV2StepGasUsage = 350_000
-    const receiveNativeGasUsage = 75_000
+    const uniswapV3StepGasUsage = 460_000
+    const uniswapV2StepGasUsage = 360_000
+    const receiveNativeGasUsage = 80_000
 
-    let routeGasUsage = new BigNumber(75_000)
+    let routeGasUsage = new BigNumber(80_000)
 
     if (route.length === 0) return routeGasUsage
     route.forEach(step => {
@@ -133,8 +133,8 @@ export class ExchangeUtils {
       return { [quota.tokenIn.network.name]: Amount.from(new BigNumber(ExchangeUtils.isWrap(quota) ? 35_000 : 55_000), 18, true) }
     }
 
-    const stargateSwapMessageGasUsage = 600_000
-    const stargateHollowMessageGasUsage = 450_000
+    const stargateSwapMessageGasUsage = 660_000
+    const stargateHollowMessageGasUsage = 500_000
 
     if (quota.tokenIn.network.name === quota.tokenOut.network.name)
       return { [quota.tokenIn.network.name]: Amount.from(this.computeOnchainTradeGasUsage(quota.exchangeRoute[0] ?? [], quota.tokenOut.address.equalTo(Address.zeroAddress)), 18, true) }
