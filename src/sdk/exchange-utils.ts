@@ -37,7 +37,7 @@ export class ExchangeUtils {
 
       config?.debugLogListener?.("ArrivalGas: Amount updated: " + amount.toBigNumber().toFixed())
 
-      const lzFee = await lzContract.estimateFee(stargateNetworksMapping(request.tokenOut.network), amount.toBigInt(), Address.zeroAddress)
+      const lzFee = await lzContract.estimateFee(stargateNetworksMapping(request.tokenOut.network), amount.toBigNumber().toFixed(), Address.zeroAddress)
 
       config?.debugLogListener?.("ArrivalGas: LzFee get: " + lzFee.toString())
 
