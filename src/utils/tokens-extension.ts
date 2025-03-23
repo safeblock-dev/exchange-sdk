@@ -56,8 +56,8 @@ export default class TokensExtension {
 
   public balanceOf(of: Address, token: BasicToken): Amount {
     return this._fetchedBalances
-      .get(of.toString())?.find(b => b.address.equalTo(token.address) && b.network === token.network.name)?.balance
-    ?? Amount.from(0, 18, true)
+        .get(of.toString())?.find(b => b.address.equalTo(token.address) && b.network === token.network.name)?.balance
+      ?? Amount.from(0, 18, true)
   }
 
   public async findTokens(query: string, options?: FindTokensOptions): Promise<BasicToken[] | null> {
@@ -81,9 +81,9 @@ export default class TokensExtension {
 
     const balances = await fetchAccountBalances(of, this.parent.tokensList.listAll())
 
-    const balanceRef = this._fetchedBalances.get(of.toString())
-    if (!balanceRef) return
+    if (!this._fetchedBalances.has(of.toString())) this._fetchedBalances.set(of.toString(), [])
 
+    const balanceRef = this._fetchedBalances.get(of.toString())!
     this._fetchedBalances.set(of.toString(), balanceRef.slice(0, 5000 - balances.length))
 
     balances.forEach(balanceData => {
