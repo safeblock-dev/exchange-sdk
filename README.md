@@ -2,16 +2,21 @@
 # SafeBlock Exchange SDK
 
 
-This SDK facilitates interactions with both EVM and non-EVM networks, supporting cross-chain swaps, on-chain exchanges, and bridging functionalities. It is designed for developers building decentralized applications requiring seamless blockchain integrations.
+This SDK facilitates interactions with EVM networks, supporting cross-chain swaps, 
+on-chain exchanges, and bridging functionalities. It is designed for developers 
+building decentralized applications requiring seamless blockchain integrations.
 
-## Features
-
-- **EVM and non-EVM Network Support**: Unified interfaces for handling blockchain operations across Ethereum Virtual Machine (EVM) and other networks.
-- **Cross-Chain Transactions**: Simplifies bridging tokens and assets between different networks.
-- **Multi-Call Optimization**: Efficiently batches calls to minimize on-chain interactions and reduce gas costs.
-- **Dynamic Network Configuration**: Supports multiple networks with easily configurable settings.
-- **Comprehensive Simulation**: Simulates routes and transactions before execution.
-- **Strongly Typed with TypeScript**: Ensures type safety and reduces runtime errors.
+## Table of Contents
+- [Installation](#installation)
+- [Usage](#usage)
+  - [Importing the SDK](#importing-the-sdk)
+  - [Finding Routes](#finding-routes)
+  - [Creating a Quote](#creating-a-quote)
+- [Executing Transactions](#executing-transactions)
+  - [Ethers](#ethers)
+  - [Other Libraries](#other-libraries)
+- [Subscribing for Events](#subscribing-for-events)
+- [Tokens Extension](#tokens-extension)
 
 ## Installation
 
@@ -200,6 +205,39 @@ sdk.removeEventListener("initialized")
 
 // ... or event remove all listeners
 sdk.cleanEventListeners()
+```
+
+## Tokens Extension
+Tokens extension allows you to find tokens using 
+SafeBlock API and get their balances for a specific 
+account directly from the blockchain. Below is a 
+simple example of finding tokens and getting their balances.
+```typescript
+
+const list = await sdk.tokensExtension.findTokens("MyCoolTokenName")
+
+list.forEach(token => sdk.tokensList.add(token))
+
+sdk.priceStorage.forceRefetch()
+const accountBalance = sdk.tokensExtension.as(Address.from("0x...accountAddress..."))
+
+await accountBalance.fetchBalances()
+
+// Balance of the first token in the list
+accountBalance.balanceOf(list[0])
+```
+
+All token balances are automatically cached, but the number of cached balances 
+cannot exceed 5,000 entries per account
+
+The example above uses the `.as(address)` syntax, but you can do without it:
+
+```typescript
+const accountAddress = Address.from("0x...")
+const token = list[0]
+
+await sdk.tokensExtension.fetchBalances(accountAddress)
+sdk.tokensExtension.balanceOf(accountAddress, token)
 ```
 
 ## Testing

@@ -84,7 +84,7 @@ export default class TokensExtension {
     const balanceRef = this._fetchedBalances.get(of.toString())
     if (!balanceRef) return
 
-    this._fetchedBalances.set(of.toString(), balanceRef.slice(0, 1000 - balances.length))
+    this._fetchedBalances.set(of.toString(), balanceRef.slice(0, 5000 - balances.length))
 
     balances.forEach(balanceData => {
       const index = balanceRef
