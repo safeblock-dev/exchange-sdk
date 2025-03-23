@@ -83,8 +83,7 @@ export default class TokensExtension {
 
     if (!this._fetchedBalances.has(of.toString())) this._fetchedBalances.set(of.toString(), [])
 
-    const balanceRef = this._fetchedBalances.get(of.toString())!
-    this._fetchedBalances.set(of.toString(), balanceRef.slice(0, 5000 - balances.length))
+    const balanceRef: IBalanceData[] = []
 
     balances.forEach(balanceData => {
       const index = balanceRef
@@ -94,8 +93,10 @@ export default class TokensExtension {
         return
       }
 
-      balanceRef.push(balanceData)
+      balanceRef.unshift(balanceData)
     })
+
+    this._fetchedBalances.set(of.toString(), balanceRef.slice(0, 5000))
   }
 
   public as(of: Address) {
