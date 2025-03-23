@@ -7,6 +7,7 @@ import StateManager from "~/sdk/state-manager"
 import { ExchangeRequest, ExecutorCallData, SimulatedRoute } from "~/types"
 import PriceStorage from "~/utils/price-storage"
 import SdkException, { SdkExceptionCode } from "~/utils/sdk-exception"
+import TokensExtension from "~/utils/tokens-extension"
 import TokensList, { BasicToken } from "~/utils/tokens-list"
 
 type TAddressesList = {[p: string]: string} & {default: string}
@@ -43,12 +44,15 @@ export abstract class SdkInstance extends StateManager {
   public abstract priceStorage: PriceStorage
 
   public abstract tokensList: TokensList
+
+  public abstract tokensExtension: TokensExtension
 }
 
 export default class SafeBlock extends SdkInstance {
   public priceStorage: PriceStorage
   public tokensList: TokensList
   public sdkConfig: SdkConfig
+  public tokensExtension: TokensExtension
 
   constructor(sdkConfig?: SdkConfig) {
     super()
@@ -67,6 +71,8 @@ export default class SafeBlock extends SdkInstance {
     this.priceStorage = new PriceStorage(this.tokensList, sdkConfig?.priceStorage?.updateInterval, prices => {
       this.emitEvent("pricesUpdated", prices)
     })
+
+    this.tokensExtension = new TokensExtension(this)
 
     this.priceStorage.waitInitialFetch(100).then(() => {
       this.emitEvent("initialized", this)

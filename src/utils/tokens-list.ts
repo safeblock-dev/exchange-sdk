@@ -71,6 +71,10 @@ export default class TokensList {
     return this
   }
 
+  public listAll() {
+    return Array.from(this.tokensList.values()).flat()
+  }
+
   public list(network: Network) {
     return this.tokensList.get(network.name) ?? []
   }
