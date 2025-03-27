@@ -1,11 +1,14 @@
 import { Address, Amount, evmNetworksList } from "@safeblock/blockchain-utils"
 import { Network } from "ethers"
 import { publicBackendURL } from "~/config"
-import { SdkInstance } from "~/sdk"
+import { SdkConfig } from "~/sdk"
+import TokensListExtension from "~/extensions/tokens-list-extension"
+import SdkCore from "~/sdk/sdk-core"
+import SdkExtension from "~/sdk/sdk-extension"
 import { fetchAccountBalances, IBalanceData } from "~/utils/fetch-accounts-balances"
 import request from "~/utils/request"
 import { networkToSafeblockMap, safeblockToNetworkMap } from "~/utils/safeblock-mappings"
-import { BasicToken } from "~/utils/tokens-list"
+import { BasicToken } from "~/types"
 
 enum SortingOrder {
   CreatedAtAscending = "created_at.asc",
@@ -40,14 +43,22 @@ interface FindTokensOptions {
   account?: Address
 }
 
-export default class TokensExtension {
+export default class TokensExtension extends SdkExtension {
+  static override name = "TokensExtension"
+
+  public readonly events = {}
+
   private _fetchedBalances: Map<string, IBalanceData[]> = new Map()
 
   private _currentTask: string
 
-  constructor(private readonly parent: SdkInstance) {
+  constructor(private readonly parent: SdkCore, private readonly config: SdkConfig) {
+    super()
+
     this._currentTask = Math.random().toFixed()
   }
+
+  public onInitialize(): void {}
 
   public reset() {
     this._fetchedBalances.clear()
@@ -77,9 +88,11 @@ export default class TokensExtension {
   }
 
   public async fetchBalances(of: Address): Promise<void> {
-    if (this.parent.tokensList.listAll().length === 0) return
+    const tokensListExtension = this.parent.extension(TokensListExtension)
 
-    const balances = await fetchAccountBalances(of, this.parent.tokensList.listAll())
+    if (this.parent.extension(TokensListExtension).tokensList.length === 0) return
+
+    const balances = await fetchAccountBalances(of, tokensListExtension.tokensList)
 
     if (!this._fetchedBalances.has(of.toString())) this._fetchedBalances.set(of.toString(), [])
 
@@ -128,7 +141,7 @@ export default class TokensExtension {
     filters.set("limit", (options.maxTokensPerRequest ?? 10).toString(10))
 
     const response = await request<{ items: BackendToken[] }>({
-      base: this.parent.sdkConfig.backend?.url ?? publicBackendURL,
+      base: this.config.backend?.url ?? publicBackendURL,
       method: "GET",
       path: `/tokens?${ filters.toString() }`
     })

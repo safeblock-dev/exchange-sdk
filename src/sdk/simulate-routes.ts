@@ -9,7 +9,7 @@ import { ExchangeRequest, MultiCallRequest, RouteStep, SimulatedRoute } from "~/
 import ArrayUtils from "~/utils/array-utils"
 import multicall from "~/utils/multicall"
 import PriceStorage from "~/utils/price-storage"
-import { BasicToken } from "~/utils/tokens-list"
+import { BasicToken } from "~/types"
 
 export default async function simulateRoutes(request: ExchangeRequest, priceStorage: PriceStorage, routes: RouteStep[][], config?: SdkConfig) {
   const getRouteReference = (route: RouteStep[]) => {

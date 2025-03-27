@@ -1,5 +1,5 @@
 import SafeBlock from "~/sdk/index"
-import { BasicToken } from "~/utils/tokens-list"
+import { BasicToken } from "~/types"
 
 interface EventCallbacks {
   initialized: (sdk: SafeBlock) => void

@@ -1,7 +1,6 @@
-import EventsManager from "~/sdk/events-manager"
 import CombinedSet from "~/utils/combined-set"
 
-export default class StateManager extends EventsManager {
+export default class StateManager {
   protected currentTask = Symbol()
 
   public readonly dexBlacklist: CombinedSet<string> = new CombinedSet()

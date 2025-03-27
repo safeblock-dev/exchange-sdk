@@ -198,10 +198,10 @@ sdk.addEventListener("initialized", sdk => {
 })
 
 // To remove specific listener use following syntax
-sdk.removeEventListener("initialized", /* listener */)
+sdk.removeCallback("initialized", /* listener */)
 
 // You can also remove all listeners of specific event...
-sdk.removeEventListener("initialized")
+sdk.removeCallback("initialized")
 
 // ... or event remove all listeners
 sdk.cleanEventListeners()

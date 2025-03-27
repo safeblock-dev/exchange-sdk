@@ -2,13 +2,23 @@ import { Address, Amount } from "@safeblock/blockchain-utils"
 import { Network } from "ethers"
 import { OffchainOracle__factory } from "~/abis/types"
 import { contractAddresses } from "~/config"
-import { MultiCallRequest } from "~/types"
+import SafeBlock, { SdkConfig } from "~/sdk"
+import TokensListExtension from "~/extensions/tokens-list-extension"
+import SdkExtension, { PartialEventBus } from "~/sdk/sdk-extension"
+import { BasicToken, MultiCallRequest } from "~/types"
 import ArrayUtils from "~/utils/array-utils"
 import multicall from "~/utils/multicall"
-import TokensList, { BasicToken } from "~/utils/tokens-list"
 
+const events = {
+  priceStorageInitialLoadFinished: () => null,
+  priceStoragePricesUpdated: () => null
+}
 
-export default class PriceStorage {
+export default class PriceStorageExtension extends SdkExtension {
+  static override name = "PriceStorageExtension"
+
+  public events = events
+
   private readonly _prices: Map<string, Map<string, bigint>>
 
   #updateTimestamp = 0
@@ -17,20 +27,28 @@ export default class PriceStorage {
   #currentFetchingTask = Symbol()
   #initialFetchFinished = false
 
-  constructor(
-    private readonly tokensList: TokensList,
-    private readonly updateInterval: number = 6000,
-    private readonly onUpdated?: (prices: Map<string, Map<string, bigint>>) => void
-  ) {
-    this._prices = new Map()
-
-    this.pricesWorker = this.pricesWorker.bind(this)
-    this.forceRefetch = this.forceRefetch.bind(this)
+  public onInitialize(): void {
+    this.waitInitialFetch(100).then(() => {
+      this.eventsBus.emitEvent("priceStorageInitialLoadFinished")
+    })
 
     this.pricesWorker().finally(() => {
       this.setupWorkerInterval()
       this.#initialFetchFinished = true
     })
+  }
+
+  constructor(
+    private readonly sdk: SafeBlock,
+    private readonly eventsBus: PartialEventBus<typeof events>,
+    private readonly config: SdkConfig
+  ) {
+    super()
+
+    this._prices = new Map()
+
+    this.pricesWorker = this.pricesWorker.bind(this)
+    this.forceRefetch = this.forceRefetch.bind(this)
   }
 
   public async waitInitialFetch(pollingInterval = 100) {
@@ -49,7 +67,8 @@ export default class PriceStorage {
   private setupWorkerInterval() {
     if (this.#workerInterval) clearInterval(this.#workerInterval)
 
-    this.#workerInterval = setInterval(() => this.pricesWorker(), this.updateInterval)
+    this.#workerInterval = setInterval(() => this.pricesWorker(), this.config
+      .priceStorage?.updateInterval ?? 6000)
   }
 
   private async fetchTokenPrices(network: Network, task: Symbol) {
@@ -59,7 +78,7 @@ export default class PriceStorage {
 
     if (!usdc) return
 
-    const requests: MultiCallRequest[] = this.tokensList
+    const requests: MultiCallRequest[] = this.sdk.extension(TokensListExtension)
       .list(network)
       .filter(
         (token) =>
@@ -88,7 +107,7 @@ export default class PriceStorage {
         (response) => {
           if (!response.data) return null
 
-          const token = this.tokensList
+          const token = this.sdk.extension(TokensListExtension)
             .list(network)
             .find((t) => Address.equal(t.address, response.reference ?? ""))
 
@@ -127,17 +146,19 @@ export default class PriceStorage {
   }
 
   private async pricesWorker(forceTask?: symbol) {
-    if (Date.now() - this.#updateTimestamp < this.updateInterval || this.#fetchingPrices) return
+    if (Date.now() - this.#updateTimestamp < (this.config.priceStorage?.updateInterval ?? 6000) || this.#fetchingPrices) return
 
     this.#fetchingPrices = true
 
     const task = forceTask ?? Symbol()
     this.#currentFetchingTask = task
 
-    return Promise.all(this.tokensList.networks.map(async network => await this.fetchTokenPrices(network, task).catch(() => null))).finally(() => {
-      this.#fetchingPrices = false
-      this.#updateTimestamp = Date.now()
-    }).finally(() => this.onUpdated?.(this._prices))
+    return Promise.all(this.sdk.extension(TokensListExtension)
+      .networks.map(async network => await this.fetchTokenPrices(network, task).catch(() => null)))
+      .finally(() => {
+        this.#fetchingPrices = false
+        this.#updateTimestamp = Date.now()
+      }).finally(() => this.eventsBus.emitEvent("priceStoragePricesUpdated"))
   }
 
   public async forceRefetch() {
@@ -166,7 +187,7 @@ export default class PriceStorage {
     const network = "name" in tokenOrNetwork ? tokenOrNetwork : tokenOrNetwork.network
     const tokenAddress = "name" in tokenOrNetwork ? address! : tokenOrNetwork.address
 
-    const existingToken = this.tokensList.get(network, tokenAddress)
+    const existingToken = this.sdk.extension(TokensListExtension).get(network, tokenAddress)
 
     if (!existingToken) return 0
 
@@ -182,7 +203,7 @@ export default class PriceStorage {
     const network = "name" in tokenOrNetwork ? tokenOrNetwork : tokenOrNetwork.network
     const tokenAddress = "name" in tokenOrNetwork ? address! : tokenOrNetwork.address
 
-    const existingToken = this.tokensList.get(network, tokenAddress)
+    const existingToken = this.sdk.extension(TokensListExtension).get(network, tokenAddress)
 
     if (!existingToken) return new Amount(0, 0, false)
 

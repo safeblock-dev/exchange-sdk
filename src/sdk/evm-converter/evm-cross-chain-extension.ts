@@ -9,7 +9,7 @@ import { ExchangeUtils } from "~/sdk/exchange-utils"
 import { ExchangeQuota, ExchangeRequest, ExecutorCallData, SimulatedRoute } from "~/types"
 import ArrayUtils from "~/utils/array-utils"
 import SdkException, { SdkExceptionCode } from "~/utils/sdk-exception"
-import { BasicToken } from "~/utils/tokens-list"
+import { BasicToken } from "~/types"
 
 interface IBuildCrossChainTransactionOptions {
   sourceChainRoute: SimulatedRoute | null

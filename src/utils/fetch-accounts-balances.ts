@@ -2,7 +2,7 @@ import { Address, Amount, networksList } from "@safeblock/blockchain-utils"
 import { MultiCall__factory, Token__factory } from "~/abis/types"
 import { multicall } from "~/index"
 import { MultiCallRequest } from "~/types"
-import { BasicToken } from "~/utils/tokens-list"
+import { BasicToken } from "~/types"
 
 export interface IBalanceData {
   network: string

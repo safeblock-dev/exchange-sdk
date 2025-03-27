@@ -7,7 +7,7 @@ import { SdkConfig, SdkInstance } from "~/sdk/index"
 import { ExchangeQuota, ExchangeRequest, RouteStep, SimulatedRoute } from "~/types"
 import PriceStorage from "~/utils/price-storage"
 import SdkException, { SdkExceptionCode } from "~/utils/sdk-exception"
-import { BasicToken } from "~/utils/tokens-list"
+import { BasicToken } from "~/types"
 
 interface BasicRequest {
   tokenIn: BasicToken

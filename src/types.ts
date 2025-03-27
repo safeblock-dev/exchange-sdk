@@ -1,6 +1,5 @@
 import { Address, Amount } from "@safeblock/blockchain-utils"
 import { ethers, Network } from "ethers"
-import { BasicToken } from "~/utils/tokens-list"
 
 export namespace BackendResponse {
   export interface IBackendRouteStep {
@@ -30,6 +29,12 @@ export namespace BackendResponse {
     }
     tokens: Record<string, IBackendToken>
   }
+}
+
+export interface BasicToken {
+  address: Address
+  decimals: number
+  network: Network
 }
 
 export interface RouteStep extends Omit<BackendResponse.IBackendRouteStep, "token0_id" | "token1_id" | "token0_fee" | "token1_fee"> {

@@ -3,7 +3,7 @@ import { apiNetworkNamesMapping } from "~/config"
 import { BackendResponse, RouteStep } from "~/types"
 import ArrayUtils from "~/utils/array-utils"
 import request from "~/utils/request"
-import { BasicToken } from "~/utils/tokens-list"
+import { BasicToken } from "~/types"
 
 interface Options {
   backendUrl: string
