@@ -68,7 +68,7 @@ jobs:
         run: npm test
 
   publish:
-    needs: [build, test]
+    needs: [ build, test ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -85,6 +85,18 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: build-artifacts
+
+      - name: Detect NPM Tag from Branch
+        id: tag
+        run: |
+          REF=${GITHUB_REF##*/}
+          if [ "$REF" = "main" ]; then
+            TAG="latest"
+          else
+            TAG="$REF"
+          fi
+          echo "Publishing with tag: $TAG"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
 
       - name: Extract Version from Tag
         id: version
@@ -106,7 +118,7 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish to NPM
-        run: npm publish
+        run: npm publish --tag ${{ steps.tag.outputs.tag }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
