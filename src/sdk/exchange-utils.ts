@@ -3,11 +3,11 @@ import BigNumber from "bignumber.js"
 import { toUtf8Bytes } from "ethers"
 import { BridgeFaucet__factory, LayerZero__factory, Token__factory } from "~/abis/types"
 import { contractAddresses, stargateNetworksMapping } from "~/config"
-import PriceStorageExtension from "~/extensions/price-storage-extension"
+import { PriceStorageExtension } from "~/extensions"
 import { SdkConfig } from "~/sdk"
 import { SdkMixins } from "~/sdk/sdk-mixins"
 import { ExchangeQuota, ExchangeRequest, RouteStep, SimulatedRoute } from "~/types"
-import SdkException, { SdkExceptionCode } from "~/utils/sdk-exception"
+import SdkException, { SdkExceptionCode } from "~/sdk/sdk-exception"
 import { BasicToken } from "~/types"
 
 interface BasicRequest {
@@ -113,7 +113,7 @@ export class ExchangeUtils {
   }
 
   private static computeOnchainTradeGasUsage(route: RouteStep[], receiveNative = false, mixinBuilder: SdkMixins) {
-    const mixin = mixinBuilder.allocateMixinApplicator("internal")
+    const mixin = mixinBuilder.getMixinApplicator("internal")
       .getNamespaceApplicator("computeOnchainTradeGasUsage")
 
     const uniswapV3StepGasUsage = mixin.applyMixin("uniswapV3StepGasUsage", 460_000)
@@ -133,7 +133,7 @@ export class ExchangeUtils {
   }
 
   public static computeQuotaExecutionGasUsage(quota: Omit<ExchangeQuota, "estimatedGasUsage">, mixinBuilder: SdkMixins) {
-    const mixin = mixinBuilder.allocateMixinApplicator("internal")
+    const mixin = mixinBuilder.getMixinApplicator("internal")
       .getNamespaceApplicator("computeQuotaExecutionGasUsage")
 
     if (ExchangeUtils.isWrapUnwrap(quota)) {
@@ -223,4 +223,3 @@ export class ExchangeUtils {
     return _request
   }
 }
-

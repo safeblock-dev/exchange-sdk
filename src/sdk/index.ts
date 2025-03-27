@@ -1,10 +1,10 @@
 import { Address } from "@safeblock/blockchain-utils"
 import BigNumber from "bignumber.js"
 import { ethers, JsonRpcSigner } from "ethers"
-import SdkCore, { SdkConfig } from "~/sdk/sdk-core"
+import SdkCore, { type SdkConfig } from "~/sdk/sdk-core"
 import { ExtractConfigExtensionsType } from "~/sdk/sdk-extension"
 import { ExchangeRequest, ExecutorCallData } from "~/types"
-import SdkException, { SdkExceptionCode } from "~/utils/sdk-exception"
+import SdkException, { SdkExceptionCode } from "~/sdk/sdk-exception"
 
 
 type GenericBlacklist<I extends string, S extends string> = Array<{ [key: string]: any } & { [key in I]: string } & { [key in S]: boolean }>
@@ -21,7 +21,8 @@ export default class SafeBlock<Configuration extends SdkConfig = SdkConfig> exte
     extensions = this.sdkConfig.extensions<typeof this.eventBus>({
       sdk: this,
       eventBus: this.eventBus,
-      config: this.sdkConfig
+      config: this.sdkConfig,
+      mixins: this.mixins
     }) as ExtractConfigExtensionsType<Configuration["extensions"]>
 
     if (extensions.length === 0) return

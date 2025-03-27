@@ -1,5 +1,5 @@
 import { Address, Amount } from "@safeblock/blockchain-utils"
-import PriceStorageExtension from "~/extensions/price-storage-extension"
+import { PriceStorageExtension } from "~/extensions"
 import { bnbDAI, bnbUSDT, maticUSDC, maticUSDT, sdkConfig } from "./utils/sdk-test-config"
 import SafeBlockSDK from "~/sdk"
 import { ExchangeRequest, SimulatedRoute } from "~/types"

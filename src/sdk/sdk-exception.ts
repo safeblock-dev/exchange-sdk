@@ -19,3 +19,4 @@ export default class SdkException extends Error {
     this.code = code
   }
 }
+

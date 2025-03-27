@@ -1,9 +1,9 @@
 import { Address, Amount } from "@safeblock/blockchain-utils"
-import PriceStorageExtension from "~/extensions/price-storage-extension"
+import { PriceStorageExtension } from "~/extensions"
 import { ExchangeUtils } from "~/sdk/exchange-utils"
 import SdkCore from "~/sdk/sdk-core"
 import { ExchangeQuota, ExchangeRequest, SimulatedRoute } from "~/types"
-import SdkException from "~/utils/sdk-exception"
+import SdkException from "~/sdk/sdk-exception"
 
 export default abstract class ExchangeConverter {
   protected constructor(public sdkInstance: SdkCore) {}

@@ -1,16 +1,17 @@
 import { Address, Amount, ethersProvider } from "@safeblock/blockchain-utils"
 import { WrappedToken__factory } from "~/abis/types"
 import { contractAddresses, publicBackendURL } from "~/config"
-import PriceStorageExtension from "~/extensions/price-storage-extension"
+import { PriceStorageExtension } from "~/extensions"
 import evmBuildRawTransaction from "~/sdk/evm-converter/evm-build-raw-transaction"
 import EvmCrossChainExtension from "~/sdk/evm-converter/evm-cross-chain-extension"
 import ExchangeConverter from "~/sdk/exchange-converter"
 import { ExchangeUtils } from "~/sdk/exchange-utils"
 import SdkCore, { SdkConfig } from "~/sdk/sdk-core"
+import { SdkMixins } from "~/sdk/sdk-mixins"
 import simulateRoutes from "~/sdk/simulate-routes"
 import { ExchangeQuota, ExchangeRequest, ExecutorCallData, SimulatedRoute } from "~/types"
 import getExchangeRoutes from "~/utils/get-exchange-routes"
-import SdkException, { SdkExceptionCode } from "~/utils/sdk-exception"
+import SdkException, { SdkExceptionCode } from "~/sdk/sdk-exception"
 
 interface RawTransactionConverterOptions {
   from: Address
@@ -22,7 +23,7 @@ interface RawTransactionConverterOptions {
 }
 
 export default class EvmConverter extends ExchangeConverter {
-  constructor(sdkInstance: SdkCore, private readonly sdkConfig: SdkConfig) {
+  constructor(sdkInstance: SdkCore, private readonly sdkConfig: SdkConfig, private readonly mixins: SdkMixins) {
     super(sdkInstance)
   }
 
@@ -76,12 +77,12 @@ export default class EvmConverter extends ExchangeConverter {
 
     return {
       ...rawQuota,
-      estimatedGasUsage: ExchangeUtils.computeQuotaExecutionGasUsage(rawQuota, this.sdkInstance.mixins)
+      estimatedGasUsage: ExchangeUtils.computeQuotaExecutionGasUsage(rawQuota, this.mixins)
     }
   }
 
   public async createMultiChainTransaction(from: Address, request: ExchangeRequest, taskId: symbol): Promise<SdkException | ExchangeQuota> {
-    const crossChain = new EvmCrossChainExtension(this, this.sdkConfig)
+    const crossChain = new EvmCrossChainExtension(this, this.sdkConfig, this.mixins)
 
     return crossChain.createMultiChainExchangeTransaction(from, request, taskId)
   }
@@ -89,7 +90,7 @@ export default class EvmConverter extends ExchangeConverter {
   public async createSingleChainTransaction(from: Address, route: SimulatedRoute, taskId: symbol): Promise<SdkException | ExchangeQuota> {
     const rawTransaction = await evmBuildRawTransaction(from, route)
 
-    return this.sdkInstance.mixins.allocateMixinApplicator("internal")
+    return this.mixins.getMixinApplicator("internal")
       .applyMixin("createSingleChainTransaction", "singleChainQuotaBuilt", await this.rawTransactionToQuota(
         {
           recalculateApproveData: true,
@@ -102,7 +103,7 @@ export default class EvmConverter extends ExchangeConverter {
   }
 
   public async fetchRoutes(request: ExchangeRequest, taskId: symbol): Promise<SdkException | SimulatedRoute[]> {
-    const mixin = this.sdkInstance.mixins.allocateMixinApplicator("internal")
+    const mixin = this.mixins.getMixinApplicator("internal")
       .getNamespaceApplicator("fetchRoutes")
 
     this.sdkConfig.debugLogListener?.(`Fetch: Loading routes: ${ request.amountIn.toReadable() } ${ request.tokenIn.address
@@ -144,7 +145,7 @@ export default class EvmConverter extends ExchangeConverter {
       toToken: request.tokenOut
     }))
 
-    this.sdkConfig.debugLogListener?.(`Fetch: Received ${ routes.length } (${ this.sdkConfig.routesCountHardLimit } limit) raw routes for single-chain trade`)
+    this.sdkConfig.debugLogListener?.(`Fetch: Received ${ routes.length } (${ this.sdkConfig.routesCountHardLimit ?? 30 } limit) raw routes for single-chain trade`)
 
     if (!this.sdkInstance.verifyTask(taskId)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 
@@ -238,9 +239,9 @@ export default class EvmConverter extends ExchangeConverter {
       priceImpact: 0
     }
 
-    return this.sdkInstance.mixins.allocateMixinApplicator("internal").applyMixin("createSingleChainWrapUnwrapTransaction", "quotaBuilt", {
+    return this.mixins.getMixinApplicator("internal").applyMixin("createSingleChainWrapUnwrapTransaction", "quotaBuilt", {
       ...rawQuota,
-      estimatedGasUsage: ExchangeUtils.computeQuotaExecutionGasUsage(rawQuota, this.sdkInstance.mixins)
+      estimatedGasUsage: ExchangeUtils.computeQuotaExecutionGasUsage(rawQuota, this.mixins)
     })
   }
 }

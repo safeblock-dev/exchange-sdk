@@ -3,22 +3,24 @@ import EvmConverter from "~/sdk/evm-converter"
 import { ExchangeUtils } from "~/sdk/exchange-utils"
 import SafeBlock from "~/sdk/index"
 import SdkExtension, { ExtractConfigExtensionsType, ExtractEvents } from "~/sdk/sdk-extension"
-import { SdkMixins } from "~/sdk/sdk-mixins"
+import { InternalMixinList, SdkMixins } from "~/sdk/sdk-mixins"
 import StateManager from "~/sdk/state-manager"
-import { BasicToken, ExchangeRequest, SimulatedRoute } from "~/types"
+import { ExchangeRequest, SimulatedRoute } from "~/types"
 import EventBus, { EventIdentifier } from "~/utils/event-bus"
-import SdkException, { SdkExceptionCode } from "~/utils/sdk-exception"
+import SdkException, { SdkExceptionCode } from "~/sdk/sdk-exception"
 
 type TAddressesList = { [p: string]: string } & { default: string }
 
+type InstanceTypeOf<T extends new (...args: any) => any> = T extends new (...args: any) => infer R ? R : never
+
 interface ExtensionInitializeEnvironment<T extends EventBus<any>> {
-  sdk: SafeBlock,
-  config: SdkConfig,
+  sdk: SafeBlock
+  config: SdkConfig
   eventBus: T
+  mixins: SdkMixins
 }
 
 export type SdkConfig = Partial<{
-  tokensList: Record<string, BasicToken[]> | Map<string, BasicToken[]> | [string, BasicToken[]][]
   routePriceDifferenceLimit: number
 
   debugLogListener: (...message: any[]) => void
@@ -37,26 +39,35 @@ export type SdkConfig = Partial<{
     url: string
     headers?: Record<string, string>
   }
-
-  priceStorage: Partial<{
-    updateInterval: number
-  }>
 }>
-
-type InstanceTypeOf<T extends new (...args: any) => any> = T extends new (...args: any) => infer R ? R : never
 
 export default class SdkCore<Configuration extends SdkConfig = SdkConfig> extends StateManager {
   protected readonly eventBus = new EventBus<ExtractEvents<Configuration["extensions"]>>()
   protected readonly sdkConfig: SdkConfig
   protected _extensions: ExtractConfigExtensionsType<Configuration["extensions"]> = [] as any
 
-  public readonly mixins = new SdkMixins()
+  protected readonly mixins = new SdkMixins()
 
   constructor(sdkConfig?: Configuration) {
     super()
 
     this.sdkConfig = sdkConfig ?? {}
   }
+
+  // Mixins
+  public addMixin<
+    Location extends keyof InternalMixinList,
+    Namespace extends keyof InternalMixinList[Location],
+    Breakpoint extends keyof InternalMixinList[Location][Namespace],
+    Value extends InternalMixinList[Location][Namespace][Breakpoint]
+  >(location: Location, namespace: Namespace, breakpoint: Breakpoint, callback: (value: Value) => Value) {
+    this.mixins.addMixin(location, namespace, breakpoint, callback)
+  }
+
+  public removeMixin(identifier: string) {
+    this.mixins.removeMixin(identifier)
+  }
+
 
   // Event listeners
   public addListener<K extends keyof ExtractEvents<Configuration["extensions"]>>(event: K, callback: (...args: ExtractEvents<Configuration["extensions"]>[K]) => any, identifier?: string) {
@@ -148,7 +159,7 @@ export default class SdkCore<Configuration extends SdkConfig = SdkConfig> extend
   }
 
   private resolveConverter() {
-    return new EvmConverter(this, this.sdkConfig)
+    return new EvmConverter(this, this.sdkConfig, this.mixins)
   }
 
   private routeToRequest(route: SimulatedRoute): ExchangeRequest {

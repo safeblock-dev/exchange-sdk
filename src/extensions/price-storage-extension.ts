@@ -1,18 +1,22 @@
-import { Address, Amount } from "@safeblock/blockchain-utils"
+import { Address, Amount, arrayUtils, multicall } from "@safeblock/blockchain-utils"
 import { Network } from "ethers"
 import { OffchainOracle__factory } from "~/abis/types"
 import { contractAddresses } from "~/config"
-import SafeBlock, { SdkConfig } from "~/sdk"
-import TokensListExtension from "~/extensions/tokens-list-extension"
+import { TokensListExtension } from "~/extensions"
+import SafeBlock from "~/sdk"
 import SdkExtension, { PartialEventBus } from "~/sdk/sdk-extension"
 import { BasicToken, MultiCallRequest } from "~/types"
-import ArrayUtils from "~/utils/array-utils"
-import multicall from "~/utils/multicall"
 
 
 const events = {
-  priceStorageInitialLoadFinished: () => null,
-  priceStoragePricesUpdated: () => null
+  onPriceStorageInitialLoadFinished: () => null,
+  onPriceStoragePricesUpdated: () => null,
+  onPriceStorageForceRefetch: () => null
+}
+
+interface IPriceStorageExtensionConfig {
+  updateInterval?: number
+  forceRefetchTimeout?: number
 }
 
 export default class PriceStorageExtension extends SdkExtension {
@@ -27,10 +31,11 @@ export default class PriceStorageExtension extends SdkExtension {
   #workerInterval: any
   #currentFetchingTask = Symbol()
   #initialFetchFinished = false
+  #forceRefetchTimeout: any
 
   public onInitialize(): void {
     this.waitInitialFetch(100).then(() => {
-      this.eventsBus.emitEvent("priceStorageInitialLoadFinished")
+      this.eventsBus.emitEvent("onPriceStorageInitialLoadFinished")
     })
 
     this.pricesWorker().finally(() => {
@@ -42,7 +47,7 @@ export default class PriceStorageExtension extends SdkExtension {
   constructor(
     private readonly sdk: SafeBlock,
     private readonly eventsBus: PartialEventBus<typeof events>,
-    private readonly config: SdkConfig
+    private readonly config?: IPriceStorageExtensionConfig
   ) {
     super()
 
@@ -68,8 +73,7 @@ export default class PriceStorageExtension extends SdkExtension {
   private setupWorkerInterval() {
     if (this.#workerInterval) clearInterval(this.#workerInterval)
 
-    this.#workerInterval = setInterval(() => this.pricesWorker(), this.config
-      .priceStorage?.updateInterval ?? 6000)
+    this.#workerInterval = setInterval(() => this.pricesWorker(), this.config?.updateInterval ?? 6000)
   }
 
   private async fetchTokenPrices(network: Network, task: Symbol) {
@@ -102,8 +106,8 @@ export default class PriceStorageExtension extends SdkExtension {
         ]
       }))
 
-    let rates = await ArrayUtils.asyncNonNullable(
-      ArrayUtils.asyncMap(
+    let rates = await arrayUtils.asyncNonNullable(
+      arrayUtils.asyncMap(
         multicall<[BigInt]>(network, requests),
         (response) => {
           if (!response.data) return null
@@ -147,7 +151,7 @@ export default class PriceStorageExtension extends SdkExtension {
   }
 
   private async pricesWorker(forceTask?: symbol) {
-    if (Date.now() - this.#updateTimestamp < (this.config.priceStorage?.updateInterval ?? 6000) || this.#fetchingPrices) return
+    if (Date.now() - this.#updateTimestamp < (this.config?.updateInterval ?? 6000) || this.#fetchingPrices) return
 
     this.#fetchingPrices = true
 
@@ -159,24 +163,33 @@ export default class PriceStorageExtension extends SdkExtension {
       .finally(() => {
         this.#fetchingPrices = false
         this.#updateTimestamp = Date.now()
-      }).finally(() => this.eventsBus.emitEvent("priceStoragePricesUpdated"))
+      }).finally(() => this.eventsBus.emitEvent("onPriceStoragePricesUpdated"))
   }
 
   public async forceRefetch() {
-    this.#updateTimestamp = 0
-    this.#fetchingPrices = false
+    if (this.#forceRefetchTimeout) clearTimeout(this.#forceRefetchTimeout)
 
-    if (this.#workerInterval) clearInterval(this.#workerInterval)
+    return new Promise<void>(resolve => {
+      this.#forceRefetchTimeout = setTimeout(async () => {
+        this.#updateTimestamp = 0
+        this.#fetchingPrices = false
 
-    const task = Symbol()
-    this.#currentFetchingTask = task
+        this.eventsBus.emitEvent("onPriceStorageForceRefetch")
 
-    try {
-      return await this.pricesWorker(task)
-    }
-    finally {
-      this.setupWorkerInterval()
-    }
+        if (this.#workerInterval) clearInterval(this.#workerInterval)
+
+        const task = Symbol()
+        this.#currentFetchingTask = task
+
+        try {
+          return await this.pricesWorker(task)
+        }
+        finally {
+          resolve()
+          this.setupWorkerInterval()
+        }
+      }, this.config?.forceRefetchTimeout ?? 200)
+    })
   }
 
   // Getters

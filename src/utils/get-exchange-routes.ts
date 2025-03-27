@@ -1,7 +1,6 @@
-import { Address } from "@safeblock/blockchain-utils"
+import { Address, arrayUtils } from "@safeblock/blockchain-utils"
 import { apiNetworkNamesMapping } from "~/config"
 import { BackendResponse, RouteStep } from "~/types"
-import ArrayUtils from "~/utils/array-utils"
 import request from "~/utils/request"
 import { BasicToken } from "~/types"
 
@@ -36,7 +35,7 @@ export default async function getExchangeRoutes(options: Options): Promise<Route
 
   if (plainRoutesList.length === 0) return []
 
-  return ArrayUtils.nonNullable(
+  return arrayUtils.nonNullable(
     plainRoutesList.map(plainRoute => {
       const steps: (null | RouteStep)[] = plainRoute.map(step => {
         const tokenA = rawRoutes.tokens[step.token0_id]

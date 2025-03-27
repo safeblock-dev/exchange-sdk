@@ -1,5 +1,5 @@
 import { arbitrum, avalanche, bnb, mainnet, optimism, matic, base } from "@safeblock/blockchain-utils"
-import selectAddress from "@safeblock/blockchain-utils/dist/utils/select-address"
+import { selectAddress } from "@safeblock/blockchain-utils"
 import { Network } from "ethers"
 import { SdkConfig } from "~/sdk"
 

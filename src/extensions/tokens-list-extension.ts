@@ -1,10 +1,9 @@
-import { Address, networksList } from "@safeblock/blockchain-utils"
+import { Address, arrayUtils, networksList } from "@safeblock/blockchain-utils"
 import { Network } from "ethers"
-import SafeBlock, { SdkConfig } from "~/sdk"
-import PriceStorageExtension from "~/extensions/price-storage-extension"
+import SafeBlock from "~/sdk"
+import PriceStorageExtension from "./price-storage-extension"
 import SdkExtension, { PartialEventBus } from "~/sdk/sdk-extension"
 import { BasicToken } from "~/types"
-import ArrayUtils from "~/utils/array-utils"
 
 const events = {
   onTokenAdded: (token: BasicToken) => null,
@@ -25,11 +24,11 @@ export default class TokensListExtension extends SdkExtension {
   constructor(
     private readonly sdk: SafeBlock,
     private readonly eventBus: PartialEventBus<typeof events>,
-    config: SdkConfig,
+    tokensList?: Record<string, BasicToken[]> | Map<string, BasicToken[]> | [string, BasicToken[]][]
   ) {
     super()
 
-    this._tokensList = TokensListExtension.toConsistent(config.tokensList ?? {})
+    this._tokensList = TokensListExtension.toConsistent(tokensList ?? {})
   }
 
   private static toConsistent(list: TInconsistentList) {
@@ -87,7 +86,7 @@ export default class TokensListExtension extends SdkExtension {
   }
 
   public get networks() {
-    return ArrayUtils.nonNullable(
+    return arrayUtils.nonNullable(
       Array.from(this._tokensList.keys()).map(networkName => (
         Array.from(networksList).find(n => n.name === networkName)
       ))

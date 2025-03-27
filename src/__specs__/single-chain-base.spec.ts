@@ -1,6 +1,6 @@
 import { Amount } from "@safeblock/blockchain-utils"
 import runSingleChainTests from "~/__specs__/utils/run-single-chain-tests"
-import PriceStorageExtension from "~/extensions/price-storage-extension"
+import { PriceStorageExtension } from "~/extensions"
 import { baseUSDC, baseWETH, bnbDAI, sdkConfig } from "./utils/sdk-test-config"
 import SafeBlockSDK from "~/sdk"
 import { ExchangeRequest } from "~/types"

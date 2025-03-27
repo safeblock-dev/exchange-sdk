@@ -1,11 +1,9 @@
 import SafeBlock, { SdkConfig } from "~/sdk"
 import { ExecutorCallData, ExchangeRequest, ExchangeQuota, SimulatedRoute, MultiCallRequest, MultiCallResponse } from "~/types"
-import multicall from "~/utils/multicall"
-import SdkException, { SdkExceptionCode } from "~/utils/sdk-exception"
+import SdkException, { SdkExceptionCode } from "~/sdk/sdk-exception"
 
 export {
   SafeBlock,
-  multicall,
   SdkException,
   SdkExceptionCode,
 
@@ -16,5 +14,5 @@ export {
   type SimulatedRoute,
 
   type MultiCallRequest,
-  type MultiCallResponse
+  type MultiCallResponse,
 }

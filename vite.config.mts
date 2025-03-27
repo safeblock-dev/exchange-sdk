@@ -1,3 +1,4 @@
+import * as path from "node:path"
 import { defineConfig } from "vite"
 import tsconfigPaths from "vite-tsconfig-paths"
 import dts from "vite-plugin-dts"
@@ -15,11 +16,13 @@ export default defineConfig({
   build: {
     lib: {
       // Entry point of your library
-      entry: "src/index.ts",
+      entry: {
+        "exchange-sdk": path.resolve(__dirname, "src/index.ts"),
+        "extensions": path.resolve(__dirname, "src/extensions/index.ts")
+      },
       // Name of the library (for UMD/IIFE builds)
       name: "ExchangeSdk",
       // Output file name without extension
-      fileName: "index",
       // Target formats: CommonJS (`cjs`) and optionally others
       formats: [ "es", "cjs" ]
     },

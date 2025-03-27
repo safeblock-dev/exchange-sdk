@@ -1,16 +1,16 @@
-import { Address, Amount } from "@safeblock/blockchain-utils"
+import { Address, Amount, arrayUtils } from "@safeblock/blockchain-utils"
 import BigNumber from "bignumber.js"
 import { AbiCoder, toUtf8Bytes } from "ethers"
 import { BridgeFaucet__factory, Entrypoint__factory, TransferFaucet__factory } from "~/abis/types"
 import { contractAddresses, stargateNetworksMapping } from "~/config"
-import PriceStorageExtension from "~/extensions/price-storage-extension"
+import { PriceStorageExtension } from "~/extensions"
 import { SdkConfig } from "~/sdk"
 import evmBuildRawTransaction from "~/sdk/evm-converter/evm-build-raw-transaction"
 import EvmConverter from "~/sdk/evm-converter/evm-converter"
 import { ExchangeUtils } from "~/sdk/exchange-utils"
+import { SdkMixins } from "~/sdk/sdk-mixins"
 import { ExchangeQuota, ExchangeRequest, ExecutorCallData, SimulatedRoute } from "~/types"
-import ArrayUtils from "~/utils/array-utils"
-import SdkException, { SdkExceptionCode } from "~/utils/sdk-exception"
+import SdkException, { SdkExceptionCode } from "~/sdk/sdk-exception"
 import { BasicToken } from "~/types"
 
 interface IBuildCrossChainTransactionOptions {
@@ -23,7 +23,11 @@ interface IBuildCrossChainTransactionOptions {
 }
 
 export default class EvmCrossChainExtension {
-  constructor(private readonly parent: EvmConverter, private readonly sdkConfig: SdkConfig) {}
+  constructor(
+    private readonly parent: EvmConverter,
+    private readonly sdkConfig: SdkConfig,
+    private readonly mixins: SdkMixins
+  ) {}
 
   public async createMultiChainExchangeTransaction(from: Address, request: ExchangeRequest, taskId: symbol): Promise<ExchangeQuota | SdkException> {
     const _request = ExchangeUtils.autoUpdateDirection(request)
@@ -243,7 +247,7 @@ export default class EvmCrossChainExtension {
 
     if (arrivalGas instanceof SdkException) return arrivalGas
 
-    const mixin = this.parent.sdkInstance.mixins.allocateMixinApplicator("internal")
+    const mixin = this.mixins.getMixinApplicator("internal")
       .getNamespaceApplicator("buildCrossChainTransaction")
 
     if (arrivalGas) nativeAmount = mixin.applyMixin("nativeAmountFinalized", nativeAmount.plus(arrivalGas.nativeAmount.toString()))
@@ -355,7 +359,7 @@ export default class EvmCrossChainExtension {
 
     const rawQuota: Omit<ExchangeQuota, "estimatedGasUsage"> = {
       executorCallData,
-      exchangeRoute: ArrayUtils.nonNullable([sourceChainRoute?.originalRoute, destinationChainRoute?.originalRoute]),
+      exchangeRoute: arrayUtils.nonNullable([sourceChainRoute?.originalRoute, destinationChainRoute?.originalRoute]),
       amountOut: correctedAmountOut,
       amountIn: correctedAmountIn,
       tokenIn: request.tokenIn,
@@ -367,7 +371,7 @@ export default class EvmCrossChainExtension {
 
     return mixin.applyMixin("quotaComputationFinalized", {
       ...rawQuota,
-      estimatedGasUsage: ExchangeUtils.computeQuotaExecutionGasUsage(rawQuota, this.parent.sdkInstance.mixins)
+      estimatedGasUsage: ExchangeUtils.computeQuotaExecutionGasUsage(rawQuota, this.mixins)
     })
   }
 
