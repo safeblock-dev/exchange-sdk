@@ -1,11 +1,12 @@
 import { Address, Amount, ethersProvider } from "@safeblock/blockchain-utils"
 import { WrappedToken__factory } from "~/abis/types"
 import { contractAddresses, publicBackendURL } from "~/config"
-import { SdkInstance } from "~/sdk"
+import PriceStorageExtension from "~/extensions/price-storage-extension"
 import evmBuildRawTransaction from "~/sdk/evm-converter/evm-build-raw-transaction"
 import EvmCrossChainExtension from "~/sdk/evm-converter/evm-cross-chain-extension"
 import ExchangeConverter from "~/sdk/exchange-converter"
 import { ExchangeUtils } from "~/sdk/exchange-utils"
+import SdkCore, { SdkConfig } from "~/sdk/sdk-core"
 import simulateRoutes from "~/sdk/simulate-routes"
 import { ExchangeQuota, ExchangeRequest, ExecutorCallData, SimulatedRoute } from "~/types"
 import getExchangeRoutes from "~/utils/get-exchange-routes"
@@ -21,7 +22,7 @@ interface RawTransactionConverterOptions {
 }
 
 export default class EvmConverter extends ExchangeConverter {
-  constructor(sdkInstance: SdkInstance) {
+  constructor(sdkInstance: SdkCore, private readonly sdkConfig: SdkConfig) {
     super(sdkInstance)
   }
 
@@ -35,10 +36,10 @@ export default class EvmConverter extends ExchangeConverter {
         tokenContract: fromTokenContract,
         approveWanted,
         approveAmount
-      } = await ExchangeUtils.getTokenTransferDetails(options.route.tokenIn, options.from, options.route.amountIn, this.sdkInstance.sdkConfig)
+      } = await ExchangeUtils.getTokenTransferDetails(options.route.tokenIn, options.from, options.route.amountIn, this.sdkConfig)
 
       if (approveWanted) approveCallData = fromTokenContract.interface.encodeFunctionData("approve", [
-        contractAddresses.entryPoint(options.route.tokenIn.network, this.sdkInstance.sdkConfig),
+        contractAddresses.entryPoint(options.route.tokenIn.network, this.sdkConfig),
         approveAmount.toBigInt()
       ])
     }
@@ -58,7 +59,7 @@ export default class EvmConverter extends ExchangeConverter {
       callData: multiSwapCallData.multiCallData,
       gasLimitMultiplier: 1.2,
       value: Address.isZero(options.route.tokenIn.address) ? options.route.amountIn : new Amount(0, 18, false),
-      to: Address.from(contractAddresses.entryPoint(options.route.tokenIn.network, this.sdkInstance.sdkConfig)),
+      to: Address.from(contractAddresses.entryPoint(options.route.tokenIn.network, this.sdkConfig)),
       network: options.route.tokenIn.network
     })
 
@@ -75,12 +76,12 @@ export default class EvmConverter extends ExchangeConverter {
 
     return {
       ...rawQuota,
-      estimatedGasUsage: ExchangeUtils.computeQuotaExecutionGasUsage(rawQuota)
+      estimatedGasUsage: ExchangeUtils.computeQuotaExecutionGasUsage(rawQuota, this.sdkInstance.mixins)
     }
   }
 
   public async createMultiChainTransaction(from: Address, request: ExchangeRequest, taskId: symbol): Promise<SdkException | ExchangeQuota> {
-    const crossChain = new EvmCrossChainExtension(this)
+    const crossChain = new EvmCrossChainExtension(this, this.sdkConfig)
 
     return crossChain.createMultiChainExchangeTransaction(from, request, taskId)
   }
@@ -88,25 +89,31 @@ export default class EvmConverter extends ExchangeConverter {
   public async createSingleChainTransaction(from: Address, route: SimulatedRoute, taskId: symbol): Promise<SdkException | ExchangeQuota> {
     const rawTransaction = await evmBuildRawTransaction(from, route)
 
-    return this.rawTransactionToQuota({
-      recalculateApproveData: true,
-      rawTransaction,
-      from,
-      taskId,
-      route
-    })
+    return this.sdkInstance.mixins.allocateMixinApplicator("internal")
+      .applyMixin("createSingleChainTransaction", "singleChainQuotaBuilt", await this.rawTransactionToQuota(
+        {
+          recalculateApproveData: true,
+          rawTransaction,
+          from,
+          taskId,
+          route
+        }
+      ))
   }
 
   public async fetchRoutes(request: ExchangeRequest, taskId: symbol): Promise<SdkException | SimulatedRoute[]> {
-    this.sdkInstance.sdkConfig.debugLogListener?.(`Fetch: Loading routes: ${ request.amountIn.toReadable() } ${ request.tokenIn.address
+    const mixin = this.sdkInstance.mixins.allocateMixinApplicator("internal")
+      .getNamespaceApplicator("fetchRoutes")
+
+    this.sdkConfig.debugLogListener?.(`Fetch: Loading routes: ${ request.amountIn.toReadable() } ${ request.tokenIn.address
       .toString().slice(0, 10) } -> ${ request.amountOut.toReadable() } ${ request.tokenOut.address.toString().slice(0, 10) }`)
 
     if (ExchangeUtils.isWrapUnwrap(request) && request.tokenIn.network === request.tokenOut.network) {
       const { amountIn, amountOut, tokenIn, tokenOut, destinationAddress, slippageReadablePercent } = request
 
-      this.sdkInstance.sdkConfig.debugLogListener?.("Fetch: Generated fake route for wrap/unwrap transaction")
+      this.sdkConfig.debugLogListener?.("Fetch: Generated fake route for wrap/unwrap transaction")
 
-      return [{
+      return [mixin.applyMixin("wrapUnwrapVirtualRouteBuilt", {
         amountIn, amountOut, tokenIn, tokenOut, destinationAddress, slippageReadablePercent,
         isExactInput: request.exactInput,
         priceImpactPercent: 0,
@@ -121,50 +128,52 @@ export default class EvmConverter extends ExchangeConverter {
           token0: ExchangeUtils.toRouteToken(request.tokenIn),
           token1: ExchangeUtils.toRouteToken(request.tokenOut)
         }]
-      }]
+      })]
     }
 
     const alternativeRoute = await this.rerouteCrossChainRoutesFetch(request, Address.from(Address.zeroAddress), taskId)
 
     if (alternativeRoute !== null) return alternativeRoute
 
-    const routes = await getExchangeRoutes({
-      backendUrl: this.sdkInstance.sdkConfig.backend?.url ?? publicBackendURL,
-      headers: this.sdkInstance.sdkConfig.backend?.headers,
+    const routes = mixin.applyMixin("receivedExchangeRoutes", await getExchangeRoutes({
+      backendUrl: this.sdkConfig.backend?.url ?? publicBackendURL,
+      headers: this.sdkConfig.backend?.headers,
       bannedDexIds: this.sdkInstance.dexBlacklist.toArray(),
-      limit: this.sdkInstance.sdkConfig.routesCountLimit ?? 3,
+      limit: this.sdkConfig.routesCountLimit ?? 3,
       fromToken: request.tokenIn,
       toToken: request.tokenOut
-    })
+    }))
 
-    this.sdkInstance.sdkConfig.debugLogListener?.(`Fetch: Received ${ routes.length } (${ this.sdkInstance.sdkConfig.routesCountHardLimit } limit) raw routes for single-chain trade`)
+    this.sdkConfig.debugLogListener?.(`Fetch: Received ${ routes.length } (${ this.sdkConfig.routesCountHardLimit } limit) raw routes for single-chain trade`)
 
     if (!this.sdkInstance.verifyTask(taskId)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 
-    const simulatedRoutes = await simulateRoutes(
+    const simulatedRoutes = mixin.applyMixin("routesSimulationFinished", await simulateRoutes(
       request,
-      this.sdkInstance.priceStorage,
-      routes.slice(0, this.sdkInstance.sdkConfig.routesCountHardLimit ?? 30),
-      this.sdkInstance.sdkConfig
-    )
+      this.sdkInstance.extension(PriceStorageExtension),
+      routes.slice(0, this.sdkConfig.routesCountHardLimit ?? 30),
+      this.sdkConfig
+    ))
 
-    this.sdkInstance.sdkConfig.debugLogListener?.(`Fetch: Raw routes simulation finished, ${ simulatedRoutes.length } routes left`)
-    if (this.sdkInstance.sdkConfig.debugLogListener) {
+    this.sdkConfig.debugLogListener?.(`Fetch: Raw routes simulation finished, ${ simulatedRoutes.length } routes left`)
+    if (this.sdkConfig.debugLogListener) {
       simulatedRoutes.slice(0, 4).forEach((route, i) => {
-        this.sdkInstance.sdkConfig.debugLogListener?.(`Simulated route ${ String(i).padStart(2, "0") } amountIn = ${ route.amountIn
+        this.sdkConfig.debugLogListener?.(`Simulated route ${ String(i).padStart(2, "0") } amountIn = ${ route.amountIn
           .toReadable() }, amountOut = ${ route.amountOut.toReadable() }`)
       })
 
-      if (simulatedRoutes.length > 4) this.sdkInstance.sdkConfig
+      if (simulatedRoutes.length > 4) this.sdkConfig
         .debugLogListener?.(`... and ${ simulatedRoutes.length - 4 } more routes hidden`)
     }
 
     if (!this.sdkInstance.verifyTask(taskId)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 
-    const filteredRoutes = simulatedRoutes.filter(route => ExchangeUtils
-      .filterRoutesByExpectedOutput(route, this.sdkInstance.priceStorage, this.sdkInstance.sdkConfig.routePriceDifferenceLimit, this.sdkInstance))
+    const filteredRoutes = mixin.applyMixin("routesFilteringFinished", (
+      simulatedRoutes.filter(route => ExchangeUtils
+        .filterRoutesByExpectedOutput(route, this.sdkInstance
+          .extension(PriceStorageExtension), this.sdkConfig.routePriceDifferenceLimit, this.sdkConfig))))
 
-    this.sdkInstance.sdkConfig.debugLogListener?.(`Fetch: Routes filtering finished, ${ filteredRoutes.length } routes left`)
+    this.sdkConfig.debugLogListener?.(`Fetch: Routes filtering finished, ${ filteredRoutes.length } routes left`)
 
     return filteredRoutes
   }
@@ -194,7 +203,7 @@ export default class EvmConverter extends ExchangeConverter {
     const wrappedToken = WrappedToken__factory.connect(wrappedAddress.toString(), ethersProvider(request.tokenIn.network))
 
     if (Address.isZero(request.tokenIn.address)) {
-      this.sdkInstance.sdkConfig.debugLogListener?.("Generating wrap transaction")
+      this.sdkConfig.debugLogListener?.("Generating wrap transaction")
 
       callData.push({
         callData: wrappedToken.interface.encodeFunctionData("deposit"),
@@ -205,7 +214,7 @@ export default class EvmConverter extends ExchangeConverter {
       })
     }
     else {
-      this.sdkInstance.sdkConfig.debugLogListener?.("Generating unwrap transaction")
+      this.sdkConfig.debugLogListener?.("Generating unwrap transaction")
 
       callData.push({
         callData: wrappedToken.interface.encodeFunctionData("withdraw", [
@@ -229,9 +238,9 @@ export default class EvmConverter extends ExchangeConverter {
       priceImpact: 0
     }
 
-    return {
+    return this.sdkInstance.mixins.allocateMixinApplicator("internal").applyMixin("createSingleChainWrapUnwrapTransaction", "quotaBuilt", {
       ...rawQuota,
-      estimatedGasUsage: ExchangeUtils.computeQuotaExecutionGasUsage(rawQuota)
-    }
+      estimatedGasUsage: ExchangeUtils.computeQuotaExecutionGasUsage(rawQuota, this.sdkInstance.mixins)
+    })
   }
 }

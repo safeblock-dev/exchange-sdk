@@ -9,6 +9,7 @@ import { BasicToken, MultiCallRequest } from "~/types"
 import ArrayUtils from "~/utils/array-utils"
 import multicall from "~/utils/multicall"
 
+
 const events = {
   priceStorageInitialLoadFinished: () => null,
   priceStoragePricesUpdated: () => null

@@ -2,16 +2,16 @@ import { Address, Amount } from "@safeblock/blockchain-utils"
 import { MaxUint256 } from "ethers"
 import { MultiSwapRouter__factory } from "~/abis/types"
 import { contractAddresses } from "~/config"
+import PriceStorageExtension from "~/extensions/price-storage-extension"
 import { ExchangeUtils } from "~/sdk/exchange-utils"
 import { SdkConfig } from "~/sdk/index"
 import convertPairsToHex from "~/utils/convert-pairs-to-hex"
 import { ExchangeRequest, MultiCallRequest, RouteStep, SimulatedRoute } from "~/types"
 import ArrayUtils from "~/utils/array-utils"
 import multicall from "~/utils/multicall"
-import PriceStorage from "~/utils/price-storage"
 import { BasicToken } from "~/types"
 
-export default async function simulateRoutes(request: ExchangeRequest, priceStorage: PriceStorage, routes: RouteStep[][], config?: SdkConfig) {
+export default async function simulateRoutes(request: ExchangeRequest, priceStorage: PriceStorageExtension, routes: RouteStep[][], config?: SdkConfig) {
   const getRouteReference = (route: RouteStep[]) => {
     return route.map(r => r.address + r.exchange_id + r.token0.address.toString() + r.token1.address.toString()).join(":")
   }

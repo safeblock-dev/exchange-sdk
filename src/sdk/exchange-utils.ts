@@ -3,9 +3,10 @@ import BigNumber from "bignumber.js"
 import { toUtf8Bytes } from "ethers"
 import { BridgeFaucet__factory, LayerZero__factory, Token__factory } from "~/abis/types"
 import { contractAddresses, stargateNetworksMapping } from "~/config"
-import { SdkConfig, SdkInstance } from "~/sdk/index"
+import PriceStorageExtension from "~/extensions/price-storage-extension"
+import { SdkConfig } from "~/sdk"
+import { SdkMixins } from "~/sdk/sdk-mixins"
 import { ExchangeQuota, ExchangeRequest, RouteStep, SimulatedRoute } from "~/types"
-import PriceStorage from "~/utils/price-storage"
 import SdkException, { SdkExceptionCode } from "~/utils/sdk-exception"
 import { BasicToken } from "~/types"
 
@@ -111,12 +112,15 @@ export class ExchangeUtils {
     return this.isWrap(request) || this.isUnwrap(request)
   }
 
-  private static computeOnchainTradeGasUsage(route: RouteStep[], receiveNative = false) {
-    const uniswapV3StepGasUsage = 460_000
-    const uniswapV2StepGasUsage = 360_000
-    const receiveNativeGasUsage = 80_000
+  private static computeOnchainTradeGasUsage(route: RouteStep[], receiveNative = false, mixinBuilder: SdkMixins) {
+    const mixin = mixinBuilder.allocateMixinApplicator("internal")
+      .getNamespaceApplicator("computeOnchainTradeGasUsage")
 
-    let routeGasUsage = new BigNumber(80_000)
+    const uniswapV3StepGasUsage = mixin.applyMixin("uniswapV3StepGasUsage", 460_000)
+    const uniswapV2StepGasUsage = mixin.applyMixin("uniswapV2StepGasUsage", 360_000)
+    const receiveNativeGasUsage = mixin.applyMixin("receiveNativeGasUsage", 80_000)
+
+    let routeGasUsage = new BigNumber(mixin.applyMixin("routeInitialGasUsage", 80_000))
 
     if (route.length === 0) return routeGasUsage
     route.forEach(step => {
@@ -128,30 +132,40 @@ export class ExchangeUtils {
     return routeGasUsage
   }
 
-  public static computeQuotaExecutionGasUsage(quota: Omit<ExchangeQuota, "estimatedGasUsage">) {
+  public static computeQuotaExecutionGasUsage(quota: Omit<ExchangeQuota, "estimatedGasUsage">, mixinBuilder: SdkMixins) {
+    const mixin = mixinBuilder.allocateMixinApplicator("internal")
+      .getNamespaceApplicator("computeQuotaExecutionGasUsage")
+
     if (ExchangeUtils.isWrapUnwrap(quota)) {
-      return { [quota.tokenIn.network.name]: Amount.from(new BigNumber(ExchangeUtils.isWrap(quota) ? 35_000 : 55_000), 18, true) }
+      return {
+        [quota.tokenIn.network.name]: Amount.from(new BigNumber(ExchangeUtils.isWrap(quota)
+          ? mixin.applyMixin("wrapTransactionGasUsage", 35_000)
+          : mixin.applyMixin("unwrapTransactionGasUsage", 55_000)
+        ), 18, true)
+      }
     }
 
-    const stargateSwapMessageGasUsage = 660_000
-    const stargateHollowMessageGasUsage = 500_000
+    const stargateSwapMessageGasUsage = mixin.applyMixin("stargateSwapMessageGasUsage", 660_000)
+    const stargateHollowMessageGasUsage = mixin.applyMixin("stargateHollowMessageGasUsage", 500_000)
 
     if (quota.tokenIn.network.name === quota.tokenOut.network.name)
-      return { [quota.tokenIn.network.name]: Amount.from(this.computeOnchainTradeGasUsage(quota.exchangeRoute[0] ?? [], quota.tokenOut.address.equalTo(Address.zeroAddress)), 18, true) }
+      return { [quota.tokenIn.network.name]: Amount.from(this.computeOnchainTradeGasUsage(quota.exchangeRoute[0] ?? [], quota.tokenOut.address.equalTo(Address.zeroAddress), mixinBuilder), 18, true) }
 
-    const sourceChainExecutionGasUsage = this.computeOnchainTradeGasUsage(quota.exchangeRoute[0] ?? [], false)
-    const destinationChainExecutionGasUsage = this.computeOnchainTradeGasUsage(quota.exchangeRoute[1] ?? [], quota.tokenOut.address.equalTo(Address.zeroAddress))
+    const sourceChainExecutionGasUsage = this.computeOnchainTradeGasUsage(quota.exchangeRoute[0] ?? [], false, mixinBuilder)
+    const destinationChainExecutionGasUsage = this.computeOnchainTradeGasUsage(quota.exchangeRoute[1] ?? [], quota.tokenOut.address.equalTo(Address.zeroAddress), mixinBuilder)
 
     const stargateGasUsage = sourceChainExecutionGasUsage.eq(0) ? stargateHollowMessageGasUsage : stargateSwapMessageGasUsage
 
     return {
       [quota.tokenIn.network.name]: Amount.from(sourceChainExecutionGasUsage.plus(stargateGasUsage)
-        .plus(quota.executorCallData.length > 0 ? 45_000 : 0).multipliedBy(1.15), 18, true),
-      [quota.tokenOut.network.name]: Amount.from(destinationChainExecutionGasUsage.multipliedBy(1.15), 18, true)
+        .plus(quota.executorCallData.length > 0 ? mixin.applyMixin("multiStepExchangeWrapperGasUsage", 45_000) : 0)
+        .multipliedBy(mixin.applyMixin("finalMultiplier", 1.15)), 18, true),
+      [quota.tokenOut.network.name]: Amount.from(destinationChainExecutionGasUsage
+        .multipliedBy(mixin.applyMixin("finalMultiplier", 1.15)), 18, true)
     }
   }
 
-  public static computePriceImpact(request: ExchangeRequest, amountIn: Amount, amountOut: Amount, priceStorage: PriceStorage) {
+  public static computePriceImpact(request: ExchangeRequest, amountIn: Amount, amountOut: Amount, priceStorage: PriceStorageExtension) {
     const tokenInPrice = priceStorage.getPrice(request.tokenIn.network, request.tokenIn.address)
     const tokenOutPrice = priceStorage.getPrice(request.tokenOut.network, request.tokenOut.address)
 
@@ -175,13 +189,13 @@ export class ExchangeUtils {
     }
   }
 
-  public static filterRoutesByExpectedOutput(route: SimulatedRoute, priceStorage: PriceStorage, maxDifference = 15, sdk?: SdkInstance) {
+  public static filterRoutesByExpectedOutput(route: SimulatedRoute, priceStorage: PriceStorageExtension, maxDifference = 15, config?: SdkConfig) {
     const fromTokenPrice = priceStorage.getPrice(route.tokenIn.network, route.tokenIn.address)
-    if (fromTokenPrice.lte(0)) sdk?.sdkConfig?.debugLogListener?.(`Possible exception with ${ route.tokenIn.network.name } ${ route.tokenIn
+    if (fromTokenPrice.lte(0)) config?.debugLogListener?.(`Possible exception with ${ route.tokenIn.network.name } ${ route.tokenIn
       .address.toString().slice(0, 19) }: price lower than or equal to zero`)
 
     const toTokenPrice = priceStorage.getPrice(route.tokenOut.network, route.tokenOut.address)
-    if (toTokenPrice.lte(0)) sdk?.sdkConfig?.debugLogListener?.(`Possible exception with ${ route.tokenOut.network.name } ${ route.tokenOut
+    if (toTokenPrice.lte(0)) config?.debugLogListener?.(`Possible exception with ${ route.tokenOut.network.name } ${ route.tokenOut
       .address.toString().slice(0, 19) }: price lower than or equal to zero`)
 
     const fromTokenUSDAmount = route.amountIn.mul(fromTokenPrice).toReadableBigNumber()

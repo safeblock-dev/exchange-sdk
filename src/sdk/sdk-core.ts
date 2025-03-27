@@ -3,9 +3,10 @@ import EvmConverter from "~/sdk/evm-converter"
 import { ExchangeUtils } from "~/sdk/exchange-utils"
 import SafeBlock from "~/sdk/index"
 import SdkExtension, { ExtractConfigExtensionsType, ExtractEvents } from "~/sdk/sdk-extension"
+import { SdkMixins } from "~/sdk/sdk-mixins"
 import StateManager from "~/sdk/state-manager"
 import { BasicToken, ExchangeRequest, SimulatedRoute } from "~/types"
-import EventBus from "~/utils/event-bus"
+import EventBus, { EventIdentifier } from "~/utils/event-bus"
 import SdkException, { SdkExceptionCode } from "~/utils/sdk-exception"
 
 type TAddressesList = { [p: string]: string } & { default: string }
@@ -45,9 +46,11 @@ export type SdkConfig = Partial<{
 type InstanceTypeOf<T extends new (...args: any) => any> = T extends new (...args: any) => infer R ? R : never
 
 export default class SdkCore<Configuration extends SdkConfig = SdkConfig> extends StateManager {
-  public readonly eventBus = new EventBus<ExtractEvents<Configuration["extensions"]>>()
+  protected readonly eventBus = new EventBus<ExtractEvents<Configuration["extensions"]>>()
   protected readonly sdkConfig: SdkConfig
   protected _extensions: ExtractConfigExtensionsType<Configuration["extensions"]> = [] as any
+
+  public readonly mixins = new SdkMixins()
 
   constructor(sdkConfig?: Configuration) {
     super()
@@ -55,6 +58,21 @@ export default class SdkCore<Configuration extends SdkConfig = SdkConfig> extend
     this.sdkConfig = sdkConfig ?? {}
   }
 
+  // Event listeners
+  public addListener<K extends keyof ExtractEvents<Configuration["extensions"]>>(event: K, callback: (...args: ExtractEvents<Configuration["extensions"]>[K]) => any, identifier?: string) {
+    this.eventBus.addCallback(event, callback, false, identifier)
+  }
+
+  public addListenerOnce<K extends keyof ExtractEvents<Configuration["extensions"]>>(event: K, callback: (...args: ExtractEvents<Configuration["extensions"]>[K]) => any, identifier?: string) {
+    this.eventBus.addCallback(event, callback, true, identifier)
+  }
+
+  public removeListener<K extends keyof ExtractEvents<Configuration["extensions"]>>(event: K, callback?: ((...args: ExtractEvents<Configuration["extensions"]>[K]) => any) | EventIdentifier) {
+    this.eventBus.removeCallback(event, callback)
+  }
+
+
+  // Other stuff
   public findRoutes(request: ExchangeRequest) {
     const converter = this.resolveConverter()
 
@@ -130,7 +148,7 @@ export default class SdkCore<Configuration extends SdkConfig = SdkConfig> extend
   }
 
   private resolveConverter() {
-    return new EvmConverter(this)
+    return new EvmConverter(this, this.sdkConfig)
   }
 
   private routeToRequest(route: SimulatedRoute): ExchangeRequest {

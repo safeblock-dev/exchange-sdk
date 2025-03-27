@@ -1,9 +1,9 @@
-class EventIdentifier {
+export class EventIdentifier {
   private readonly _identifier: string
   private readonly _once: boolean
 
   constructor(identifier?: string, once?: boolean) {
-    this._identifier = identifier ?? (Math.random() * 1e8).toString(16)
+    this._identifier = identifier ?? (Math.random() * 1e8).toFixed(16)
     this._once = once ?? false
   }
 
