@@ -68,7 +68,7 @@ jobs:
         run: npm test
 
   publish:
-    needs: [ build, test ]
+    needs: [build, test]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -86,18 +86,6 @@ jobs:
         with:
           name: build-artifacts
 
-      - name: Detect NPM Tag from Branch
-        id: tag
-        run: |
-          REF=${GITHUB_REF##*/}
-          if [ "$REF" = "main" ]; then
-            TAG="latest"
-          else
-            TAG="$REF"
-          fi
-          echo "Publishing with tag: $TAG"
-          echo "tag=$TAG" >> $GITHUB_OUTPUT
-
       - name: Extract Version from Tag
         id: version
         run: |
@@ -105,6 +93,11 @@ jobs:
           VERSION=${VERSION#v}
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "version=$VERSION" >> $GITHUB_ENV
+          if [[ "$VERSION" == *-preview* ]]; then
+            echo "NPM_TAG=preview" >> $GITHUB_ENV
+          else
+            echo "NPM_TAG=latest" >> $GITHUB_ENV
+          fi
 
       - name: Update package.json with Tag Version
         run: |
@@ -118,7 +111,7 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish to NPM
-        run: npm publish --tag ${{ steps.tag.outputs.tag }}
+        run: npm publish --tag $NPM_TAG
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
