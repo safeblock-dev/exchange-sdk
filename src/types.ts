@@ -1,5 +1,5 @@
 import { Address, Amount } from "@safeblock/blockchain-utils"
-import { ethers, Network } from "ethers"
+import { Network } from "ethers"
 
 export namespace BackendResponse {
   export interface IBackendRouteStep {
@@ -60,31 +60,6 @@ export interface SimulatedRoute {
 
   priceImpactPercent: number
   usedTokensList: BasicToken[]
-}
-
-export interface MultiCallRequest {
-  target: Address
-  contractInterface: { createInterface: () => ethers.Interface }
-  calls: Array<{
-    reference?: string
-    method: string
-    methodParameters: unknown[]
-    allowFailure?: boolean
-  }>
-}
-
-export interface Call3_MultiCallStruct {
-  target: string
-  allowFailure: boolean
-  callData: string
-  method: string
-  reference?: string
-}
-
-export interface MultiCallResponse<T> {
-  success: boolean
-  data: T | null
-  reference?: string
 }
 
 export interface ExchangeRequest {

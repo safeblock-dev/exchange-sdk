@@ -1,11 +1,11 @@
-import { Address, Amount, arrayUtils, multicall } from "@safeblock/blockchain-utils"
+import { Address, Amount, arrayUtils, multicall, MultiCallRequest } from "@safeblock/blockchain-utils"
 import { Network } from "ethers"
 import { OffchainOracle__factory } from "~/abis/types"
 import { contractAddresses } from "~/config"
 import { TokensListExtension } from "~/extensions"
 import SafeBlock from "~/sdk"
 import SdkExtension, { PartialEventBus } from "~/sdk/sdk-extension"
-import { BasicToken, MultiCallRequest } from "~/types"
+import { BasicToken } from "~/types"
 
 
 const events = {

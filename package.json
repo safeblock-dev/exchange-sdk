@@ -56,7 +56,7 @@
   },
   "homepage": "https://github.com/safeblock-dev/exchange-sdk#readme",
   "dependencies": {
-    "@safeblock/blockchain-utils": "^0.4.0",
+    "@safeblock/blockchain-utils": "^0.4.1",
     "ethers": "^6.13.4"
   }
 }

@@ -1,5 +1,5 @@
 import SafeBlock, { SdkConfig } from "~/sdk"
-import { ExecutorCallData, ExchangeRequest, ExchangeQuota, SimulatedRoute, MultiCallRequest, MultiCallResponse } from "~/types"
+import { ExecutorCallData, ExchangeRequest, ExchangeQuota, SimulatedRoute, BasicToken } from "~/types"
 import SdkException, { SdkExceptionCode } from "~/sdk/sdk-exception"
 
 export {
@@ -13,6 +13,5 @@ export {
   type ExchangeQuota,
   type SimulatedRoute,
 
-  type MultiCallRequest,
-  type MultiCallResponse,
+  type BasicToken
 }

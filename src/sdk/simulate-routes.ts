@@ -1,4 +1,4 @@
-import { Address, Amount, arrayUtils, multicall } from "@safeblock/blockchain-utils"
+import { Address, Amount, arrayUtils, multicall, MultiCallRequest } from "@safeblock/blockchain-utils"
 import { MaxUint256 } from "ethers"
 import { MultiSwapRouter__factory } from "~/abis/types"
 import { contractAddresses } from "~/config"
@@ -6,7 +6,7 @@ import { PriceStorageExtension } from "~/extensions"
 import { ExchangeUtils } from "~/sdk/exchange-utils"
 import { SdkConfig } from "~/sdk/index"
 import convertPairsToHex from "~/utils/convert-pairs-to-hex"
-import { ExchangeRequest, MultiCallRequest, RouteStep, SimulatedRoute } from "~/types"
+import { ExchangeRequest, RouteStep, SimulatedRoute } from "~/types"
 import { BasicToken } from "~/types"
 
 export default async function simulateRoutes(request: ExchangeRequest, priceStorage: PriceStorageExtension, routes: RouteStep[][], config?: SdkConfig) {
