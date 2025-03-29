@@ -214,11 +214,10 @@ export default class EvmCrossChainExtension {
 
       const abiCoder = new AbiCoder()
       destinationNetworkCallData = abiCoder.encode(
-        ["address", "address", "bytes32", "bytes"],
+        ["address", "address", "bytes"],
         [
           toNetworkUSDC.address.toString(),
           Address.from(request.destinationAddress || from || Address.zeroAddress).toString(),
-          "0x00000000000000000000000000000000000000000000000000000000000000e8",
           destinationChainSwapData.multiCallData
         ]
       )
@@ -253,7 +252,10 @@ export default class EvmCrossChainExtension {
     if (arrivalGas) nativeAmount = mixin.applyMixin("nativeAmountFinalized", nativeAmount.plus(arrivalGas.nativeAmount.toString()))
 
     const transferData = transferFaucetIface.encodeFunctionData("transferToken", [
-      Address.from(request.destinationAddress || from || Address.zeroAddress).toString()
+      Address.from(request.destinationAddress || from || Address.zeroAddress).toString(),
+      [
+        sourceChainRoute?.tokenOut.address.toString() ?? fromNetworkUSDC.address.toString()
+      ]
     ])
 
     sourceNetworkCallData.push(
@@ -273,11 +275,6 @@ export default class EvmCrossChainExtension {
     )
 
     sourceNetworkCallData.push(mixin.applyMixin("transferDataEncoded", transferData))
-
-    const callOffset = mixin.applyMixin("callOffset", (
-      sourceNetworkCallData.length > 2 ? "0x0000000000000000000000000000000000000000000000000000000000000044"
-        : "0x0000000000000000000000000000000000000000000000000000000000000000"
-    ))
 
     if (arrivalGas && arrivalGas.nativeAmount.gt(0)) {
       this.sdkConfig.debugLogListener?.("Build: Computing arrival gas details and calldata")
@@ -315,8 +312,7 @@ export default class EvmCrossChainExtension {
     }
 
     executorCallData.push(mixin.applyMixin("multiCallTransactionRequest", {
-      callData: entryPointIface.encodeFunctionData("multicall(bytes32,bytes[])", [
-        callOffset,
+      callData: entryPointIface.encodeFunctionData("multicall", [
         sourceNetworkCallData
       ]),
       gasLimitMultiplier: 1.2,

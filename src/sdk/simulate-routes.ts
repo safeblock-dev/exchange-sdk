@@ -21,14 +21,18 @@ export default async function simulateRoutes(request: ExchangeRequest, priceStor
 
     if (request.exactInput) {
       _calls.push({
-        method: "multiswap",
+        method: "multiswap2",
         reference: getRouteReference(route),
         methodParameters: [
           {
-            minAmountOut: 0,
+            minAmountsOut: [],
             tokenIn: request.tokenIn.address.toString(),
-            pairs,
-            amountIn: request.amountIn.toBigInt()
+            pairs: [pairs],
+            tokensOut: [request.tokenOut.address.toString()],
+            fullAmount: request.amountIn.toBigInt(),
+            amountInPercentages: [
+              BigInt(1e18)
+            ]
           }
         ]
       })

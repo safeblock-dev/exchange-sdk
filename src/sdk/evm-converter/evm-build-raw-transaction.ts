@@ -3,22 +3,33 @@ import BigNumber from "bignumber.js"
 import { Entrypoint__factory, MultiswapRouterFaucet__factory, TransferFaucet__factory } from "~/abis/types"
 import { SimulatedRoute } from "~/types"
 import convertPairsToHex from "~/utils/convert-pairs-to-hex"
+import request from "~/utils/request"
 
 export default async function evmBuildRawTransaction(from: Address, route: SimulatedRoute) {
   const pairsHex = convertPairsToHex(route.originalRoute)
 
   const multiSwapIface = MultiswapRouterFaucet__factory.createInterface()
 
-  const multiSwapData = multiSwapIface.encodeFunctionData("multiswap", [
+  const multiSwapData = multiSwapIface.encodeFunctionData("multiswap2", [
     {
-      amountIn: route.amountIn.toBigInt(),
-      minAmountOut: new BigNumber(100)
-        .minus(route.slippageReadablePercent ?? 1)
-        .multipliedBy(route.amountOut.toString())
-        .div(100)
-        .toFixed(0),
+      fullAmount: route.amountIn.toBigInt(),
+      amountInPercentages: [
+        BigInt(1e18)
+      ],
+      minAmountsOut: [
+        new BigNumber(100)
+          .minus(route.slippageReadablePercent ?? 1)
+          .multipliedBy(route.amountOut.toString())
+          .div(100)
+          .toFixed(0)
+      ],
       tokenIn: route.tokenIn.address.toString(),
-      pairs: pairsHex
+      tokensOut: [
+        route.tokenOut.address.toString()
+      ],
+      pairs: [
+        pairsHex
+      ]
     }
   ])
 
@@ -34,14 +45,16 @@ export default async function evmBuildRawTransaction(from: Address, route: Simul
     ])
   } else {
     transferData = transferFaucetIface.encodeFunctionData("transferToken", [
-      destinationAddress.toString()
+      destinationAddress.toString(),
+      [
+        route.tokenOut.address.toString()
+      ]
     ])
   }
 
   const entryPointIface = Entrypoint__factory.createInterface()
 
-  const multiCallData = entryPointIface.encodeFunctionData("multicall(bytes32,bytes[])", [
-    "0x0000000000000000000000000000000000000000000000000000000000000000",
+  const multiCallData = entryPointIface.encodeFunctionData("multicall", [
     [
       multiSwapData,
       transferData

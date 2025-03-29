@@ -12,6 +12,11 @@
   },
   {
     "inputs": [],
+    "name": "EfficientSwapAmount_InvalidTokenIn",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "MultiswapRouterFacet_FailedV2Swap",
     "type": "error"
   },
@@ -42,22 +47,17 @@
   },
   {
     "inputs": [],
+    "name": "MultiswapRouterFacet_InvalidMultiswap2Calldata",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "MultiswapRouterFacet_InvalidNativeSender",
     "type": "error"
   },
   {
     "inputs": [],
     "name": "MultiswapRouterFacet_InvalidPairsArray",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "MultiswapRouterFacet_InvalidPartswapCalldata",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "MultiswapRouterFacet_InvalidTokenIn",
     "type": "error"
   },
   {
@@ -73,17 +73,6 @@
   {
     "inputs": [],
     "name": "MultiswapRouterFacet_SenderMustBeUniswapV3Pool",
-    "type": "error"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "sender",
-        "type": "address"
-      }
-    ],
-    "name": "Ownable_SenderIsNotOwner",
     "type": "error"
   },
   {
@@ -103,6 +92,11 @@
   },
   {
     "inputs": [],
+    "name": "TransientStorageFacetLibrary_InvalidSenderAddress",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "UniswapV2_InsufficientInputAmount",
     "type": "error"
   },
@@ -114,19 +108,6 @@
   {
     "stateMutability": "nonpayable",
     "type": "fallback"
-  },
-  {
-    "inputs": [],
-    "name": "feeContract",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
   },
   {
     "inputs": [
@@ -159,14 +140,8 @@
       }
     ],
     "name": "multiswap",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "amount",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "payable",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -179,56 +154,37 @@
             "type": "uint256"
           },
           {
-            "internalType": "uint256",
-            "name": "minAmountOut",
-            "type": "uint256"
-          },
-          {
             "internalType": "address",
             "name": "tokenIn",
             "type": "address"
           },
           {
-            "internalType": "address",
-            "name": "tokenOut",
-            "type": "address"
+            "internalType": "address[]",
+            "name": "tokensOut",
+            "type": "address[]"
           },
           {
             "internalType": "uint256[]",
-            "name": "amountsIn",
+            "name": "minAmountsOut",
             "type": "uint256[]"
           },
           {
-            "internalType": "bytes32[]",
+            "internalType": "uint256[]",
+            "name": "amountInPercentages",
+            "type": "uint256[]"
+          },
+          {
+            "internalType": "bytes32[][]",
             "name": "pairs",
-            "type": "bytes32[]"
+            "type": "bytes32[][]"
           }
         ],
-        "internalType": "struct IMultiswapRouterFacet.PartswapCalldata",
+        "internalType": "struct IMultiswapRouterFacet.Multiswap2Calldata",
         "name": "data",
         "type": "tuple"
       }
     ],
-    "name": "partswap",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "amount",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "payable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "newFeeContract",
-        "type": "address"
-      }
-    ],
-    "name": "setFeeContract",
+    "name": "multiswap2",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

@@ -6,7 +6,7 @@ import { SdkConfig } from "~/sdk"
 
 const contractAddresses = {
   entryPoint: (network: Network, config?: SdkConfig) => selectAddress(network, config?.contractAddresses?.entryPoint ?? {
-    default: "0x9AE4De30ad3943e3b65E5DF41e8FB8CC0F0213d7"
+    default: "0x27d6b06f29802a19c6c1216D540758f32ebD8dE6"
   }),
 
   quoter: (network: Network, config?: SdkConfig) => selectAddress(network, config?.contractAddresses?.quoter ?? {
