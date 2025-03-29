@@ -93,6 +93,11 @@ jobs:
           VERSION=${VERSION#v}
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "version=$VERSION" >> $GITHUB_ENV
+          if [[ "$VERSION" == *-preview* ]]; then
+            echo "NPM_TAG=preview" >> $GITHUB_ENV
+          else
+            echo "NPM_TAG=latest" >> $GITHUB_ENV
+          fi
 
       - name: Update package.json with Tag Version
         run: |
@@ -106,7 +111,7 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish to NPM
-        run: npm publish
+        run: npm publish --tag $NPM_TAG
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

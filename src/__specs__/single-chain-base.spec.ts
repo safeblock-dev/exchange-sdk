@@ -1,5 +1,6 @@
 import { Amount } from "@safeblock/blockchain-utils"
 import runSingleChainTests from "~/__specs__/utils/run-single-chain-tests"
+import { PriceStorageExtension } from "~/extensions"
 import { baseUSDC, baseWETH, bnbDAI, sdkConfig } from "./utils/sdk-test-config"
 import SafeBlockSDK from "~/sdk"
 import { ExchangeRequest } from "~/types"
@@ -18,8 +19,8 @@ describe("Single chain exchanges in BASE network", async () => {
     slippageReadablePercent: 1
   }
 
-  await sdk.priceStorage.forceRefetch()
-  await sdk.priceStorage.waitInitialFetch(1000)
+  await sdk.extension(PriceStorageExtension).forceRefetch()
+  await sdk.extension(PriceStorageExtension).waitInitialFetch(1000)
 
   const routes = await sdk.findRoutes(request)
 

@@ -1,4 +1,5 @@
 import { Address, Amount } from "@safeblock/blockchain-utils"
+import { PriceStorageExtension } from "~/extensions"
 import { bnbDAI, bnbUSDT, maticUSDC, maticUSDT, sdkConfig } from "./utils/sdk-test-config"
 import SafeBlockSDK from "~/sdk"
 import { ExchangeRequest, SimulatedRoute } from "~/types"
@@ -34,7 +35,7 @@ describe("Cross chain exchanges from Ethereum to Ethereum", async () => {
     slippageReadablePercent: 1
   }
 
-  await sdk.priceStorage.forceRefetch()
+  await sdk.extension(PriceStorageExtension).forceRefetch()
   await new Promise(r => setTimeout(r, 5_000))
 
   const allRoutes = [

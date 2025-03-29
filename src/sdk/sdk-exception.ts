@@ -5,7 +5,9 @@ export enum SdkExceptionCode {
   NoTetherFound,
   RoutesNotFound,
   InternalError,
-  TransactionPrepareError
+  TransactionPrepareError,
+  ExtensionInitError,
+  ExtensionError
 }
 
 export default class SdkException extends Error {
@@ -17,3 +19,4 @@ export default class SdkException extends Error {
     this.code = code
   }
 }
+

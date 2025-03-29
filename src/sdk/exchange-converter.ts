@@ -1,12 +1,12 @@
 import { Address, Amount } from "@safeblock/blockchain-utils"
+import { PriceStorageExtension } from "~/extensions"
 import { ExchangeUtils } from "~/sdk/exchange-utils"
-import { SdkInstance } from "~/sdk/index"
+import SdkCore from "~/sdk/sdk-core"
 import { ExchangeQuota, ExchangeRequest, SimulatedRoute } from "~/types"
-import PriceStorage from "~/utils/price-storage"
-import SdkException from "~/utils/sdk-exception"
+import SdkException from "~/sdk/sdk-exception"
 
 export default abstract class ExchangeConverter {
-  protected constructor(public sdkInstance: SdkInstance) {}
+  protected constructor(public sdkInstance: SdkCore) {}
 
   public abstract fetchRoutes(request: ExchangeRequest, taskId: symbol): Promise<SdkException | SimulatedRoute[]>
 
@@ -32,12 +32,12 @@ export default abstract class ExchangeConverter {
         request,
         transaction.amountIn,
         transaction.amountOut,
-        this.sdkInstance.priceStorage
+        this.sdkInstance.extension(PriceStorageExtension)
       )
     ]
   }
 
-  protected createMockRoute(request: ExchangeRequest, amountIn: Amount, amountOut: Amount, priceStorage: PriceStorage): SimulatedRoute {
+  protected createMockRoute(request: ExchangeRequest, amountIn: Amount, amountOut: Amount, priceStorage: PriceStorageExtension): SimulatedRoute {
     return {
       ...request,
       originalRoute: [{

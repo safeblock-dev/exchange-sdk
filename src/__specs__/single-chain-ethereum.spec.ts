@@ -1,5 +1,6 @@
 import { Address, Amount } from "@safeblock/blockchain-utils"
 import runSingleChainTests from "~/__specs__/utils/run-single-chain-tests"
+import { PriceStorageExtension } from "~/extensions"
 import { SdkException } from "~/index"
 import { bnbDAI, bnbUSDT, mainnetETH, sdkConfig } from "./utils/sdk-test-config"
 import SafeBlockSDK from "~/sdk"
@@ -19,7 +20,7 @@ describe("Single chain exchanges in Ethereum networks", async () => {
     slippageReadablePercent: 1
   }
 
-  await sdk.priceStorage.waitInitialFetch()
+  await sdk.extension(PriceStorageExtension).waitInitialFetch()
 
   const routes = await sdk.findRoutes(request)
 

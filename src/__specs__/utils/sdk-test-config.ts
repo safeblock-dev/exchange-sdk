@@ -1,4 +1,5 @@
 import { Address, base, bnb, mainnet, matic } from "@safeblock/blockchain-utils"
+import { TokensListExtension, PriceStorageExtension } from "~/extensions"
 import { SdkConfig } from "~/sdk"
 
 const bnbDAI = { // DAI
@@ -69,18 +70,20 @@ const maticUSDT = {
 
 const sdkConfig: SdkConfig = {
   routePriceDifferenceLimit: 20,
-  tokensList: {
-    [bnb.name]: [bnbUSDT, bnbDAI, bnbDOGE, bnbUSDC],
-    [matic.name]: [maticUSDC, maticUSDT],
-    [mainnet.name]: [mainnetUSDT, mainnetETH, mainnetUSDC],
-    [base.name]: [baseUSDC, baseWETH]
-  },
   backend: {
     url: "https://api.safeblock.com"
   },
-  priceStorage: {
-    updateInterval: 10_000
-  }
+  extensions: env => [
+    new TokensListExtension(env.sdk, env.eventBus, {
+      [bnb.name]: [bnbUSDT, bnbDAI, bnbDOGE, bnbUSDC],
+      [matic.name]: [maticUSDC, maticUSDT],
+      [mainnet.name]: [mainnetUSDT, mainnetETH, mainnetUSDC],
+      [base.name]: [baseUSDC, baseWETH]
+    }),
+    new PriceStorageExtension(env.sdk, env.eventBus, {
+      updateInterval: 10_000
+    })
+  ]
 }
 
 export {

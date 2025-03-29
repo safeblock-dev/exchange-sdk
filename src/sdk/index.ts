@@ -1,114 +1,47 @@
 import { Address } from "@safeblock/blockchain-utils"
 import BigNumber from "bignumber.js"
 import { ethers, JsonRpcSigner } from "ethers"
-import EvmConverter from "~/sdk/evm-converter"
-import { ExchangeUtils } from "~/sdk/exchange-utils"
-import StateManager from "~/sdk/state-manager"
-import { ExchangeRequest, ExecutorCallData, SimulatedRoute } from "~/types"
-import PriceStorage from "~/utils/price-storage"
-import SdkException, { SdkExceptionCode } from "~/utils/sdk-exception"
-import TokensExtension from "~/utils/tokens-extension"
-import TokensList, { BasicToken } from "~/utils/tokens-list"
+import SdkCore, { type SdkConfig } from "~/sdk/sdk-core"
+import { ExtractConfigExtensionsType } from "~/sdk/sdk-extension"
+import { ExchangeRequest, ExecutorCallData } from "~/types"
+import SdkException, { SdkExceptionCode } from "~/sdk/sdk-exception"
 
-type TAddressesList = {[p: string]: string} & {default: string}
-
-export type SdkConfig = Partial<{
-  tokensList: Record<string, BasicToken[]> | Map<string, BasicToken[]> | [string, BasicToken[]][]
-  routePriceDifferenceLimit: number
-
-  debugLogListener: (...message: any[]) => void
-
-  routesCountLimit: number
-  routesCountHardLimit: number
-
-  contractAddresses: Partial<{
-    entryPoint: TAddressesList
-    quoter: TAddressesList
-  }>
-
-  backend: {
-    url: string
-    headers?: Record<string, string>
-  }
-
-  priceStorage: Partial<{
-    updateInterval: number
-  }>
-}>
 
 type GenericBlacklist<I extends string, S extends string> = Array<{ [key: string]: any } & { [key in I]: string } & { [key in S]: boolean }>
 
-export abstract class SdkInstance extends StateManager {
-  public abstract sdkConfig: SdkConfig
+export default class SafeBlock<Configuration extends SdkConfig = SdkConfig> extends SdkCore<Configuration> {
+  public constructor(sdkConfig?: Configuration) {
+    super(sdkConfig)
 
-  public abstract priceStorage: PriceStorage
+    // Initialize extensions
+    let extensions: ExtractConfigExtensionsType<Configuration["extensions"]> = [] as any
 
-  public abstract tokensList: TokensList
+    if (!this.sdkConfig.extensions) return
 
-  public abstract tokensExtension: TokensExtension
-}
+    extensions = this.sdkConfig.extensions<typeof this.eventBus>({
+      sdk: this,
+      eventBus: this.eventBus,
+      config: this.sdkConfig,
+      mixins: this.mixins
+    }) as ExtractConfigExtensionsType<Configuration["extensions"]>
 
-export default class SafeBlock extends SdkInstance {
-  public priceStorage: PriceStorage
-  public tokensList: TokensList
-  public sdkConfig: SdkConfig
-  public tokensExtension: TokensExtension
+    if (extensions.length === 0) return
 
-  constructor(sdkConfig?: SdkConfig) {
-    super()
+    const extensionNames = extensions.map(ext => ext.name)
+    this.sdkConfig.debugLogListener?.(`Loading extensions: ${ extensionNames.join(", ") }`)
 
-    this.sdkConfig = sdkConfig ?? {}
-
-    this.tokensList = new TokensList({
-      initialTokens: sdkConfig?.tokensList ?? {},
-      onTokenAdded: token => {
-        this.priceStorage.forceRefetch().finally()
-        this.emitEvent("tokenAdded", token)
-      },
-      onTokenRemoved: token => this.emitEvent("tokenRemoved", token)
-    })
-
-    this.priceStorage = new PriceStorage(this.tokensList, sdkConfig?.priceStorage?.updateInterval, prices => {
-      this.emitEvent("pricesUpdated", prices)
-    })
-
-    this.tokensExtension = new TokensExtension(this)
-
-    this.priceStorage.waitInitialFetch(100).then(() => {
-      this.emitEvent("initialized", this)
-      this.sdkConfig.debugLogListener?.("Price storage initialization finished")
-    })
-  }
-
-  public findRoutes(request: ExchangeRequest) {
-    const converter = this.resolveConverter()
-
-    return converter.fetchRoutes(request, this.currentTask)
-  }
-
-  public async createQuotaFromRoute(from: Address, route: SimulatedRoute) {
-    const request = this.routeToRequest(route)
-    const converter = this.resolveConverter()
-
-    if (route.tokenIn.network === route.tokenOut.network) {
-      if (ExchangeUtils.isWrapUnwrap(route)) {
-        const wrapUnwrap = converter.createSingleChainWrapUnwrapTransaction(request)
-
-        if (wrapUnwrap instanceof SdkException) return wrapUnwrap
-
-        return wrapUnwrap
-      }
-
-      if (!route) return new SdkException("Route not selected", SdkExceptionCode.InvalidRequest)
-
-      const singleChainTransactions = await converter.createSingleChainTransaction(from, route, this.currentTask)
-
-      if (singleChainTransactions instanceof SdkException) return singleChainTransactions
-
-      return singleChainTransactions
+    if (new Set(extensionNames).size !== extensionNames.length) {
+      throw new SdkException("Cannot initialize extensions with identical names", SdkExceptionCode.ExtensionInitError)
     }
 
-    return converter.createMultiChainTransaction(from, request, this.currentTask)
+    super.attachExtensions(extensions)
+
+    extensions.forEach(extension => extension.onInitialize(this))
+
+    this.sdkConfig.debugLogListener?.("All extensions initialized")
+
+    // @ts-ignore
+    this.eventBus.emitEvent("onExtensionsInitializationFinished", extensionNames)
   }
 
   public syncDexBlacklists<I extends string, S extends string>(idFieldName: I, stateFieldName: S, list: GenericBlacklist<I, S>) {
@@ -163,15 +96,6 @@ export default class SafeBlock extends SdkInstance {
       gasLimit: new BigNumber(String(estimation)).multipliedBy(data.gasLimitMultiplier ?? 1).toFixed(0)
     }
   }
-
-  private resolveConverter() {
-    return new EvmConverter(this)
-  }
-
-  private routeToRequest(route: SimulatedRoute): ExchangeRequest {
-    return {
-      ...route,
-      exactInput: route.isExactInput
-    }
-  }
 }
+
+export { SdkConfig }
