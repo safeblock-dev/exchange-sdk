@@ -1,9 +1,8 @@
 import { Address, Amount, evmNetworksList } from "@safeblock/blockchain-utils"
 import { Network } from "ethers"
 import { publicBackendURL } from "~/config"
-import { SdkConfig } from "~/sdk"
+import SafeBlock, { SdkConfig } from "~/sdk"
 import { TokensListExtension } from "~/extensions"
-import SdkCore from "~/sdk/sdk-core"
 import SdkExtension from "~/sdk/sdk-extension"
 import { fetchAccountBalances, IBalanceData } from "~/utils/fetch-accounts-balances"
 import request from "~/utils/request"
@@ -40,7 +39,6 @@ interface FetchTokensOptions {
 interface FindTokensOptions {
   networks?: Network[]
   maxTokensPerRequest?: number
-  account?: Address
 }
 
 export default class TokensExtension extends SdkExtension {
@@ -52,7 +50,7 @@ export default class TokensExtension extends SdkExtension {
 
   private _currentTask: string
 
-  constructor(private readonly parent: SdkCore, private readonly config: SdkConfig) {
+  constructor(private readonly sdk: SafeBlock, private readonly config: SdkConfig) {
     super()
 
     this._currentTask = Math.random().toFixed()
@@ -88,9 +86,9 @@ export default class TokensExtension extends SdkExtension {
   }
 
   public async fetchBalances(of: Address): Promise<void> {
-    const tokensListExtension = this.parent.extension(TokensListExtension)
+    const tokensListExtension = this.sdk.extension(TokensListExtension)
 
-    if (this.parent.extension(TokensListExtension).tokensList.length === 0) return
+    if (this.sdk.extension(TokensListExtension).tokensList.length === 0) return
 
     const balances = await fetchAccountBalances(of, tokensListExtension.tokensList)
 

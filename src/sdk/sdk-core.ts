@@ -71,15 +71,15 @@ export default class SdkCore<Configuration extends SdkConfig = SdkConfig> extend
 
   // Event listeners
   public addListener<K extends keyof ExtractEvents<Configuration["extensions"]>>(event: K, callback: (...args: ExtractEvents<Configuration["extensions"]>[K]) => any, identifier?: string) {
-    this.eventBus.addCallback(event, callback, false, identifier)
+    return this.eventBus.addCallback(event, callback, false, identifier)
   }
 
   public addListenerOnce<K extends keyof ExtractEvents<Configuration["extensions"]>>(event: K, callback: (...args: ExtractEvents<Configuration["extensions"]>[K]) => any, identifier?: string) {
-    this.eventBus.addCallback(event, callback, true, identifier)
+    return this.eventBus.addCallback(event, callback, true, identifier)
   }
 
   public removeListener<K extends keyof ExtractEvents<Configuration["extensions"]>>(event: K, callback?: ((...args: ExtractEvents<Configuration["extensions"]>[K]) => any) | EventIdentifier) {
-    this.eventBus.removeCallback(event, callback)
+    return this.eventBus.removeCallback(event, callback)
   }
 
 

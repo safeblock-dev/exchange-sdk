@@ -35,7 +35,7 @@ export default class PriceStorageExtension extends SdkExtension {
 
   public onInitialize(): void {
     this.waitInitialFetch(100).then(() => {
-      this.eventsBus.emitEvent("onPriceStorageInitialLoadFinished")
+      this.eventBus.emitEvent("onPriceStorageInitialLoadFinished")
     })
 
     this.pricesWorker().finally(() => {
@@ -46,7 +46,7 @@ export default class PriceStorageExtension extends SdkExtension {
 
   constructor(
     private readonly sdk: SafeBlock,
-    private readonly eventsBus: PartialEventBus<typeof events>,
+    private readonly eventBus: PartialEventBus<typeof events>,
     private readonly config?: IPriceStorageExtensionConfig
   ) {
     super()
@@ -163,7 +163,7 @@ export default class PriceStorageExtension extends SdkExtension {
       .finally(() => {
         this.#fetchingPrices = false
         this.#updateTimestamp = Date.now()
-      }).finally(() => this.eventsBus.emitEvent("onPriceStoragePricesUpdated"))
+      }).finally(() => this.eventBus.emitEvent("onPriceStoragePricesUpdated"))
   }
 
   public async forceRefetch() {
@@ -174,7 +174,7 @@ export default class PriceStorageExtension extends SdkExtension {
         this.#updateTimestamp = 0
         this.#fetchingPrices = false
 
-        this.eventsBus.emitEvent("onPriceStorageForceRefetch")
+        this.eventBus.emitEvent("onPriceStorageForceRefetch")
 
         if (this.#workerInterval) clearInterval(this.#workerInterval)
 
@@ -190,24 +190,6 @@ export default class PriceStorageExtension extends SdkExtension {
         }
       }, this.config?.forceRefetchTimeout ?? 200)
     })
-  }
-
-  // Getters
-
-  public getFormattedPrice(tokenOrNetwork: Network, address: Address): number
-  public getFormattedPrice(tokenOrNetwork: BasicToken): number
-
-  public getFormattedPrice(tokenOrNetwork: BasicToken | Network, address?: Address): number {
-    const network = "name" in tokenOrNetwork ? tokenOrNetwork : tokenOrNetwork.network
-    const tokenAddress = "name" in tokenOrNetwork ? address! : tokenOrNetwork.address
-
-    const existingToken = this.sdk.extension(TokensListExtension).get(network, tokenAddress)
-
-    if (!existingToken) return 0
-
-    const price = this.getPrice(network, tokenAddress)
-
-    return parseFloat((parseInt(price.toString()) * (10 ** -existingToken.decimals)).toFixed(existingToken.decimals))
   }
 
   public getPrice(tokenOrNetwork: Network, address: Address): Amount

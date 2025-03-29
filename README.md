@@ -1,22 +1,30 @@
-
 # SafeBlock Exchange SDK
 
-
-This SDK facilitates interactions with EVM networks, supporting cross-chain swaps, 
-on-chain exchanges, and bridging functionalities. It is designed for developers 
+This SDK facilitates interactions with EVM networks, supporting cross-chain swaps,
+on-chain exchanges, and bridging functionalities. It is designed for developers
 building decentralized applications requiring seamless blockchain integrations.
 
 ## Table of Contents
+
 - [Installation](#installation)
 - [Usage](#usage)
-  - [Importing the SDK](#importing-the-sdk)
-  - [Finding Routes](#finding-routes)
-  - [Creating a Quote](#creating-a-quote)
+    - [Importing the SDK](#importing-the-sdk)
+    - [Extensions](#extensions)
+    - [Default Extensions Configuration](#default-extensions-configuration)
+    - [Finding Routes](#finding-routes)
+    - [Creating a Quote](#creating-a-quote)
+    - [Subscribing for Events](#subscribing-for-events)
+    - [Unsubscribing from Events](#unsubscribing-from-events)
+    - [Events List](#events-list)
 - [Executing Transactions](#executing-transactions)
-  - [Ethers](#ethers)
-  - [Other Libraries](#other-libraries)
-- [Subscribing for Events](#subscribing-for-events)
-- [Tokens Extension](#tokens-extension)
+    - [Ethers](#ethers)
+    - [Other Libraries](#other-libraries)
+- [Extensions API](#extensions-api)
+    - [Configuring Extension](#configuring-extension)
+    - [Events Bus](#events-bus)
+    - [Using Mixins](#using-mixins)
+- [Testing](#testing)
+- [License](#license)
 
 ## Installation
 
@@ -32,39 +40,99 @@ yarn add @safeblock/exchange-sdk
 
 ### Importing the SDK
 
+Below is an example SDK configuration.
+
 ```typescript
 import { SafeBlock } from "@safeblock/exchange-sdk"
 
 const sdk = new SafeBlock({
-  tokensList: {}, // Optional, initial tokens list
-
-  // Optional, default is 20, will skip all routes that has price impact
-  // more than 20 percents
+  // Optional, default is 20, will skip all routes with a price impact
+  // more than 20 percent
   routePriceDifferenceLimit: 20,
 
-  // Soft limit for routes count in batch call,
-  // will try to retrieve as much as possible direct routes
+  // Soft limit for the number of routes in a batch call,
+  // will try to retrieve as many direct routes as possible
   // and 3 more indirect routes
   routesCountLimit: 3,
-  
-  // Maximum routes in single batch call, default is 30
-  // more than 40 can lead to unpredictable exceptions
+
+  // Maximum number of routes in a single batch call, default is 30
+  // setting more than 40 may cause unpredictable errors
   routesCountHardLimit: 30,
-  
+
+  extensions: environment => [
+    // Extensions list, should contain at least
+    // TokensListExtension and PriceStorageExtension      
+  ],
+
   backend: {
     url: "https://api.safeblock.com",
-    headers: {} // Optional, setup authorization headers if needed
-  },
-  
-  // Optional
-  priceStorage: {
-    // Optional, time in milliseconds between price update cycles
-    updateInterval: 15_000
+    headers: {} // Optional: set authorization headers if needed
   }
 })
 ```
 
+_**Note**: Starting with v1.0.0, for the SDK to function properly, in addition to the standard configuration, you must
+set up the default extensions._
+
+### Extensions
+
+Extensions are custom code that extend the functionality
+of the SDK. By default, the following set of extensions is available:
+
+| Extension Name        | Description                                                          |
+|-----------------------|----------------------------------------------------------------------|
+| TokensListExtension   | An extension that adds a managed token list to the SDK.              |
+| PriceStorageExtension | An extension that adds the ability to fetch and update token prices. |
+| TokensExtension       | An extension for interacting with SafeBlock token APIs.              |
+
+_**Note**: For the SDK to work correctly, at least the TokensListExtension and PriceStorageExtension are required;
+without these extensions, the SDK will throw an error when you try to initialize._
+
+For more information about each of these standard extensions, see
+the [Vendor Extensions README.md](/src/extensions/README.md).
+
+### Accessing Extensions
+
+To access extensions, you can use the following method:
+
+```ts
+import { TokensListExtension } from "@safeblock/exchange-sdk/extensions"
+
+sdk.extension(TokensListExtension).add(basicToken)
+```
+
+If the extension was not found, or if an error occurred during its initialization,
+this code will throw an exception. If you want to run certain code blocks only when the extension has been obtained
+successfully, you can use the following method:
+
+```ts
+sdk.withExtension(TokensListExtension, extension => {
+// This block will only run if the requested extension is successfully obtained
+})
+```
+
+_**Note**: You can still wrap the first approach in a `try/catch`, which will work as well._
+
+### Default Extensions Configuration
+
+Below is the minimal working extensions configuration for the SDK:
+
+```ts
+const sdk = new SafeBlock({
+// ... other configuration options
+  extensions: env => [
+    new TokensListExtension(env.sdk, env.eventBus),
+    new PriceStorageExtension(env.sdk, env.eventBus)
+  ]
+})
+```
+
+_**Note**: For the PriceStorageExtension to work correctly, you need to add
+at least two tokens for each network to the token list, one of which must be USDC._
+
 ### Finding Routes
+
+After setting up the SDK, you can start obtaining exchange data. The first step is to find routes:
 
 ```typescript
 import { Address, Amount, bnb } from "@safeblock/blockchain-utils"
@@ -83,21 +151,24 @@ const routes = await sdk.findRoutes(request) // => SdkError or list of routes
 
 ### Creating a Quote
 
-A quota is a representation of a swap that contains all the data for the 
-upcoming swap and a ready calldata for the transaction
+A quote is a representation of a swap that contains all the data for the
+upcoming swap and ready-to-use calldata for the transaction:
 
 ```typescript
-const route = routes[0] // Select a route from the simulation results
+// Select a route from the simulation results
+// Routes array is sorted by price impact, from lower to higher
+// so the first entry will be the best route provided
+const route = routes[0]
 const quota = await sdk.createQuotaFromRoute(Address.from("0xYourAddress"), route) // => Error or quota
 ```
 
-If you don't need detailed route management, you can simplify the code and get quota right away:
+If you don't need detailed route management, you can simplify the code and get the quote right away:
 
 ```typescript
 import { Address } from "@safeblock/blockchain-utils"
 
 const request = {
-  /* Same as in previous example */
+  /* same as in previous example */
 }
 
 const task = sdk.updateTask()
@@ -105,26 +176,74 @@ const task = sdk.updateTask()
 const quota = await sdk.createQuota(Address.from("0xYourAddress"), request, task)
 ```
 
-This method will automatically calculate the routes and return you the best quota possible
+This method automatically calculates the routes and returns the best possible quote.
+
+### Subscribing for Events
+
+During operation, both the SDK and its extensions may generate certain events.
+You can subscribe to the events you need as follows:
+
+```ts
+// This event comes from the TokensListExtension, which is called
+// each time a new token is added
+const identifier = sdk.addListener("onTokenAdded", basicToken => {
+  // ...
+})
+```
+
+This structure will return an object of type `EventIdentifier`, which can be used
+to safely remove the handler.
+
+You can also add an event handler that only triggers once:
+
+```ts
+sdk.addListenerOnce("onTokenAdded", () => {})
+```
+
+### Unsubscribing from Events
+
+Event handlers are removed as follows:
+
+```ts
+// Remove a handler by reference to the function
+sdk.removeListener("onTokenAdded", () => {})
+
+// Remove a handler by its identifier
+sdk.removeListener("onTokenAdded", identifier)
+
+// Remove all handlers for a specific event
+sdk.removeListener("onTokenAdded")
+```
+
+### Events List
+
+By default, the SDK only has the `onExtensionsInitializationFinished` event available,
+which is called after the SDK is fully initialized. Information about events declared by extensions
+can be found in each extension’s documentation.
+
+_**Pro tip**: If an extension lacks documentation, you can identify its declared events by checking
+the `events` field in the extension’s code._
 
 ## Executing Transactions
 
+The final step of an exchange is executing the transactions obtained in the previous steps.
+
 ### Ethers
 
-If you use the ethers library to interact with contracts, you can 
-easily prepare transactions for posting using SDK:
+If you use the ethers library to interact with contracts, you can
+easily prepare transactions for posting using the SDK:
 
 ```typescript
-const quota: ExchangeQuota = {} // From previous example
-const signer = JsonRpcSigner // Your ethers signer
+const quota: ExchangeQuota = {} // from the previous example
+const signer = JsonRpcSigner // your ethers signer
 
 for (const data of quota.executorCallData) {
   const transaction = await sdk.prepareEthersTransaction(data, signer)
 
-  // In case of any errors, the prepareEthersTransaction method will return
-  // a standard SdkException error
+// In case of any errors, the prepareEthersTransaction method will return
+// a standard SdkException error
   if (transaction instanceof SdkException) {
-    console.log("Error occured", transaction.code, transaction.message)
+    console.log("Error occurred", transaction.code, transaction.message)
     return
   }
 
@@ -136,109 +255,233 @@ for (const data of quota.executorCallData) {
 }
 ```
 
-Warning. Most likely, the transaction array will contain an approval transaction,
-so it is strongly recommended to wait for the execution of the first transaction 
-before starting the execution of subsequent ones to avoid simulation errors
+**Warning**: Most likely, the transaction array will include an approval transaction,
+so it is strongly recommended to wait for the execution of the first transaction
+before starting subsequent ones to avoid simulation errors.
 
 ### Other Libraries
 
 If you prefer to use any other library besides ethers, you can just as easily
-build a transaction to send manually:
+build a transaction manually:
 
 ```typescript
-// quota and signer variables are the same as in previous example
+// quota and signer variables are the same as in the previous example
 
 for (const data of quota.executorCallData) {
-  // There is the basic transaction params
-  const transactionData = data.callData // Transaction data
-  const network = data.network.chainId // Chain id of the network where transaction should be sent to
-  const value = data.value // Native amount, may be undefined
-  const to = data.to // Destination address
-  
-  // First, you need to estimate transaction gas consumption
-  const gasEstimation = 1 // Replace with actual logic
-  
-  // Now you need to get current fee data or only gasPrice
-  const gasPrice = 1 // Replace with actual logic
-  
-  // In this example we used BigNumber, but you can use anything you like
+// Basic transaction parameters
+  const transactionData = data.callData // transaction data
+  const network = data.network.chainId // chain ID of the network where the transaction should be sent
+  const value = data.value // native amount, may be undefined
+  const to = data.to // destination address
+
+// First, estimate the gas consumption of the transaction
+  const gasEstimation = 1 // replace with actual logic
+
+// Now get current fee data or only gasPrice
+  const gasPrice = 1 // replace with actual logic
+
+// In this example we use BigNumber, but you can use any library of your choice
   const gasLimit = new BigNumber(estimation).multipliedBy(callData.gasLimitMultiplier ?? 1).toFixed(0)
-  
-  // With data gathered above we are now able to send transaction, just 
-  // pack it with your library and sign with a wallet
+
+// With the data gathered above, we can send the transaction: just
+// package it with your library and sign with your wallet
 }
 ```
 
-## Subscribing for Events
+## Extensions API
 
-SDK supports the ability to subscribe to specific events that occur under the hood:
+**Note**: The extension system has been available since SDK version v1.0.0-preview.4.
 
-| Event name    | Description                                                                |
-|---------------|----------------------------------------------------------------------------|
-| initialized   | Will be called after completing the receipt of balances for the first time |
-| pricesUpdated | Will be called every time the prices in priceStorage are updated           |
-| tokenAdded    | Will be called after the token is added to tokensList                      |
-| tokenRemoved  | Will be called after the token is removed from the tokensList              |
+Any extension for the SDK is a class that extends the abstract `SdkExtension` class and implements its methods.
+A basic extension looks like this:
 
-Usage example:
+```ts
+import { SdkExtension } from "@safeblock/exchange-sdk"
 
-```typescript
-import { Address, bnb } from "@safeblock/blockchain-utils"
+class TestExtension extends SdkExtension {
+  // A unique name for your extension
+  static override name = "TestExtension"
 
-// Lets create logic that will log wBNB price right after SDK priceStorage initialization
-sdk.addEventListener("initialized", sdk => {
-  const network = bnb
+  public events = {}
 
-  // Get price of wrapped BNB token
-  const price = sdk.priceStorage.getPrice(network, Address.wrappedOf(network))
-  
-  // In this case, if the token is added to the SDK, the price is unambiguously received
-  
-  console.log("wBNB price:", price.toReadableBigNumber().toFixed())
+  // This function is called once during extension initialization
+  public onInitialize(): void {}
+
+  constructor() {
+    super()
+  }
+}
+```
+
+You can add this extension to the SDK\'s extension section, and it will be initialized, but it will not perform any
+functionality yet.
+
+### Configuring Extension
+
+Although the extension supports any activity, it requires specific permissions
+to access the SDK\'s internal data.
+
+Currently, the following internal data structures can be accessed by an extension:
+
+| Structure | Description                                    |
+|-----------|------------------------------------------------|
+| eventsBus | The SDK\'s shared event bus                    |
+| sdk       | The current SDK instance (public methods only) |
+| mixins    | The mixin subsystem                            |
+| config    | The configuration of the current SDK instance  |
+
+All of the above data structures are available in the `environment` object in the SDK\'s `extensions` configuration:
+
+```ts
+const sdk = new SafeBlock({
+  extensions: environment => [
+    // ...
+  ]
+})
+```
+
+An extension can access these data structures through the constructor. Let's modify our previous extension example to
+access the SDK instance in the extension:
+
+```ts
+import { SafeBlock } from "@safeblock/exchange-sdk"
+
+class TestExtension extends SdkExtension {
+  // ... no changes
+
+  constructor(private readonly sdk: SafeBlock) {
+    super()
+  }
+}
+```
+
+Now the extension has access to the public methods of the SDK instance.
+It is considered good practice to make the requested variables optional, so that
+the end user can decide what data to expose.
+
+An example of how to initialize this extension:
+
+```ts
+const sdk = new SafeBlock({
+  extensions: environment => [
+    new TestExtension(environment.sdk)
+  ]
+})
+```
+
+### Events Bus
+
+The event bus is a subsystem that creates, stores, and triggers various events.
+
+An extension can call any existing events as well as declare its own events, which
+the end user can then subscribe to. Let’s expand our extension:
+
+```ts
+import { SdkExtension, type PartialEventBus } from "@safeblock/exchange-sdk"
+
+const events = {
+  // Declare the events that our extension can trigger
+  // The return data type doesn’t matter; we use null for convenience.
+  onTestExtensionCall: () => null,
+
+  // Here is an example of an event with arguments
+  onTestExtensionCallWithArgs: (date: number) => null
+}
+
+class TestExtension extends SdkExtension {
+  static override name = "TestExtension"
+
+  public events = events
+
+  constructor(private readonly eventsBus: PartialEventBus<typeof events>) {
+    super()
+  }
+
+  public onInitialize() {}
+
+  public callExtension() {
+    // If everything is set up correctly, the emitEvent function will automatically pick up
+    // the event types declared here. Since onTestExtensionCall has no arguments,
+    // we can call it without any.
+    this.eventsBus.emitEvent("onTestExtensionCall")
+
+    // This is how we call an event with arguments
+    this.eventsBus.emitEvent("onTestExtensionCallWithArgs", Date.now())
+  }
+}
+```
+
+If you also need to call events from other extensions, simply widen the event bus type in the constructor:
+
+```ts
+import { TokensListExtension } from "@safeblock/exchange-sdk/extensions"
+
+type TokensListExtensionEvents = typeof TokensListExtension["prototype"]["events"]
+
+class TestExtension extends SdkExtension {
+  // ... no changes
+
+  constructor(private readonly eventsBus: PartialEventBus<typeof events & TokensListExtensionEvents>) {
+    super()
+
+    // Now you can emit events from TokensListExtension as well
+    eventsBus.emitEvent("onTokenAdded", basicToken)
+  }
+}
+```
+
+All events from all extensions are automatically typed once they are added to the SDK configuration:
+
+```ts
+const sdk = new SafeBlock({
+  extensions: environment => [
+    new TestExtension(environment.sdk)
+  ]
 })
 
-// To remove specific listener use following syntax
-sdk.removeCallback("initialized", /* listener */)
-
-// You can also remove all listeners of specific event...
-sdk.removeCallback("initialized")
-
-// ... or event remove all listeners
-sdk.cleanEventListeners()
+// addListener now supports default events, onTestExtensionCall, and onTestExtensionCallWithArgs
+sdk.addListener("...", /* ... */)
 ```
 
-## Tokens Extension
-Tokens extension allows you to find tokens using 
-SafeBlock API and get their balances for a specific 
-account directly from the blockchain. Below is a 
-simple example of finding tokens and getting their balances.
-```typescript
+### Using Mixins
 
-const list = await sdk.tokensExtension.findTokens("MyCoolTokenName")
+Mixins are a subsystem of the SDK that allow extensions to modify the SDK\'s internal logic.
 
-list.forEach(token => sdk.tokensList.add(token))
+_**Note**: Currently, the mixin system is in a prototype stage and only allows changes
+to specifically defined parts of the SDK\'s core. In future updates, extensions will
+be able to declare their own mixins._
 
-sdk.priceStorage.forceRefetch()
-const accountBalance = sdk.tokensExtension.as(Address.from("0x...accountAddress..."))
+Let's use our previous extension and add logic to modify the gas usage calculation for transactions:
 
-await accountBalance.fetchBalances()
+```ts
+// ... no changes
 
-// Balance of the first token in the list
-accountBalance.balanceOf(list[0])
+import { type SdkMixins } from "@safeblock/exchange-sdk"
+
+class TestExtension extends SdkExtension {
+  // ... no changes
+
+  constructor(/* ... no changes */ private readonly mixins: SdkMixins) {
+    super()
+  }
+
+  public onInitialize() {
+    this.mixins.addMixin(
+      "internal",
+      "computeOnchainTradeGasUsage",
+      "routeInitialGasUsage",
+      value => value * 2
+    )
+  }
+
+  // ... no changes
+}
 ```
 
-All token balances are automatically cached, but the number of cached balances 
-cannot exceed 5,000 entries per account
+In this example, the extension modifies the amount of gas used by the swap execution contract, doubling the initial gas
+usage.
 
-The example above uses the `.as(address)` syntax, but you can do without it:
-
-```typescript
-const accountAddress = Address.from("0x...")
-const token = list[0]
-
-await sdk.tokensExtension.fetchBalances(accountAddress)
-sdk.tokensExtension.balanceOf(accountAddress, token)
-```
+**You can find the list of available mixins here:** [MIXINS.md](MIXINS.md)
 
 ## Testing
 
