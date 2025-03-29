@@ -1,8 +1,9 @@
 # SafeBlock Exchange SDK
 
-This SDK facilitates interactions with EVM networks, supporting cross-chain swaps,
-on-chain exchanges, and bridging functionalities. It is designed for developers
-building decentralized applications requiring seamless blockchain integrations.
+The SafeBlock Exchange SDK is a comprehensive toolkit for building decentralized 
+applications with cross-chain swap, bridging, and token management functionalities. 
+It streamlines interactions with EVM-based networks through a clean extension system,
+supporting default modules for tokens, price retrieval, and event handling. 
 
 ## Table of Contents
 
@@ -31,10 +32,18 @@ building decentralized applications requiring seamless blockchain integrations.
 Install the SDK using npm or yarn:
 
 ```bash
-npm install @safeblock/exchange-sdk
+npm add @safeblock/exchange-sdk
 # or
 yarn add @safeblock/exchange-sdk
 ```
+
+If you want to get the latest features or just test preview builds, install the SDK from the preview channel
+
+```bash
+npm[yarn] add @safeblock/exchange-sdk@preview
+```
+
+_**Note**: Pre-release builds may be unstable or contain features that may be completely changed or removed after release or in future preview updates of the same version._
 
 ## Usage
 

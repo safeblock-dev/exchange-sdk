@@ -6,11 +6,13 @@ with the SDK.
 _**Note**: The `PriceStorageExtension` and `TokensListExtension` are required for the SDK to work correctly._
 
 ## Table of Contents
+
 - [PriceStorageExtension](#pricestorageextension)
 - [TokensListExtension](#tokenslistextension)
 - [TokensExtension](#tokensextension)
 
 ## PriceStorageExtension
+
 An extension that adds the ability to fetch and update token prices.
 
 ### Configuration
@@ -50,7 +52,8 @@ new PriceStorageExtension(env.sdk, env.eventBus, {
   \
   Creates a `Promise` object that resolves only after the initial price loading has finished.  
   **Arguments**:
-    - `pollingInterval?: number` — determines how frequently the extension polls its internal state to see if the initial loading has finished
+    - `pollingInterval?: number` — determines how frequently the extension polls its internal state to see if the
+      initial loading has finished
 
 
 - `forceRefetch(): Promise<void>`
@@ -66,9 +69,11 @@ new PriceStorageExtension(env.sdk, env.eventBus, {
     - `address?: Address` — the token address (used only if `tokenOrNetwork` is a network pointer)
 
 ## TokensListExtension
+
 An extension that adds a managed token list to the SDK.
 
 ### Configuration
+
 ```ts
 import { TokensListExtension } from "@safeblock/exchange-sdk/extensions"
 
@@ -129,9 +134,11 @@ new TokensListExtension(
   Returns a list of network pointers for which tokens exist in the list
 
 ## TokensExtension
+
 An extension for interacting with SafeBlock token APIs.
 
 ### Configuration
+
 ```ts
 import { TokensExtension } from "@safeblock/exchange-sdk/extensions"
 
@@ -139,9 +146,11 @@ new TokensExtension(env.sdk, env.config)
 ```
 
 ### Declared Events
+
 Does not declare any events
 
 ### Public Methods
+
 - `reset()`
   \
   Resets the current balance update task and clears all stored user balances
@@ -167,16 +176,18 @@ Does not declare any events
 
 - `as(of: Address)`
   \
-  Returns an object that provides the `balanceOf` and `fetchBalances` methods without requiring the address as the first argument. Similar to using `bind`.
+  Returns an object that provides the `balanceOf` and `fetchBalances` methods without requiring the address as the first
+  argument. Similar to using `bind`.
 
 ### Custom Types
+
 ```ts
 interface FindTokensOptions {
-// A list of networks to search on.
-// If not specified, the search will be performed on all available networks
-networks?: Network[]
+  // A list of networks to search on.
+  // If not specified, the search will be performed on all available networks
+  networks?: Network[]
 
-// The maximum number of tokens in the response
-maxTokensPerRequest?: number
+  // The maximum number of tokens in the response
+  maxTokensPerRequest?: number
 }
 ```
