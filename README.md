@@ -222,7 +222,7 @@ const request: ExchangeRequest = {
   ],
   amountIn: Amount.from(10, tokenA.decimals, true),
   amountOutReadablePercentages: [
-    50, // Select the percentage of output amounts
+    50, // Select the share percentage of output amounts
     50  // In this case you will exchange 5 tokenA 
         // to tokenB and 5 tokenA to tokenC       
   ],
