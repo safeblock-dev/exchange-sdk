@@ -8,7 +8,7 @@ import SdkException from "~/sdk/sdk-exception"
 export default abstract class ExchangeConverter {
   protected constructor(public sdkInstance: SdkCore) {}
 
-  public abstract fetchRoutes(request: ExchangeRequest, taskId: symbol): Promise<SdkException | SimulatedRoute[]>
+  public abstract fetchRoute(request: ExchangeRequest, taskId: symbol): Promise<SdkException | SimulatedRoute>
 
   public abstract createSingleChainTransaction(from: Address, route: SimulatedRoute, taskId: symbol): Promise<SdkException | ExchangeQuota>
 
@@ -17,49 +17,49 @@ export default abstract class ExchangeConverter {
   public abstract createSingleChainWrapUnwrapTransaction(request: ExchangeRequest): ExchangeQuota | SdkException
 
   protected isCrossChain(request: ExchangeRequest): boolean {
-    return request.tokenIn.network.name !== request.tokenOut.network.name
+    return request.tokenIn.network.name !== request.tokensOut[0].network.name
   }
 
-  protected async rerouteCrossChainRoutesFetch(request: ExchangeRequest, zeroAddress: Address, taskId: symbol): Promise<SdkException | SimulatedRoute[] | null> {
+  protected async rerouteCrossChainRoutesFetch(request: ExchangeRequest, zeroAddress: Address, taskId: symbol): Promise<SdkException | SimulatedRoute | null> {
     if (!this.isCrossChain(request)) return null
 
     const transaction = await this.createMultiChainTransaction(zeroAddress, request, taskId)
 
     if (transaction instanceof SdkException) return transaction
 
-    return [
-      this.createMockRoute(
-        request,
-        transaction.amountIn,
-        transaction.amountOut,
-        this.sdkInstance.extension(PriceStorageExtension)
-      )
-    ]
+    return this.createMockRoute(
+      request,
+      transaction.amountIn,
+      transaction.amountsOut,
+      this.sdkInstance.extension(PriceStorageExtension)
+    )
   }
 
-  protected createMockRoute(request: ExchangeRequest, amountIn: Amount, amountOut: Amount, priceStorage: PriceStorageExtension): SimulatedRoute {
+  protected createMockRoute(request: ExchangeRequest, amountIn: Amount, amountsOut: Amount[], priceStorage: PriceStorageExtension): SimulatedRoute {
     return {
       ...request,
-      originalRoute: [{
+      originalRouteSet: [[{
         exchange_id: "MockBridgeId",
         address: Address.from(Address.zeroAddress),
         fee: 0,
         version: "V0",
         token0: {
           ...request.tokenIn,
-          fee: 0,
+          fee: 0
         },
         token1: {
-          ...request.tokenOut,
+          ...request.tokensOut[0],
           fee: 0
         }
-      }],
+      }]],
       amountIn,
-      amountOut,
+      amountsOut,
       routeReference: Math.random().toString(),
       isExactInput: request.exactInput,
-      priceImpactPercent: ExchangeUtils.computePriceImpact(request, amountIn, amountOut, priceStorage),
-      usedTokensList: [request.tokenIn, request.tokenOut]
+      priceImpactPercents: request.tokensOut.map((tokenOut, index) => (
+        ExchangeUtils.computePriceImpact(request, tokenOut, amountIn, amountsOut[index], priceStorage)
+      )),
+      usedTokensList: [request.tokenIn, ...request.tokensOut]
     }
   }
 }

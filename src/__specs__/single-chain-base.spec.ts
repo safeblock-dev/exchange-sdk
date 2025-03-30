@@ -13,16 +13,17 @@ describe("Single chain exchanges in BASE network", async () => {
   const request: ExchangeRequest = {
     exactInput: true,
     amountIn: new Amount(10, baseUSDC.decimals, true),
-    amountOut: amountOutInitial,
+    amountsOut: [amountOutInitial],
+    amountOutReadablePercentages: [100],
     tokenIn: baseUSDC,
-    tokenOut: baseWETH,
+    tokensOut: [baseWETH],
     slippageReadablePercent: 1
   }
 
   await sdk.extension(PriceStorageExtension).forceRefetch()
   await sdk.extension(PriceStorageExtension).waitInitialFetch(1000)
 
-  const routes = await sdk.findRoutes(request)
+  const routes = await sdk.findRoute(request)
 
   if (routes instanceof Error) {
     throw new Error("routes must not be an error: " + routes.message)

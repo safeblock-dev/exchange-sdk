@@ -11,27 +11,30 @@ describe("Cross chain exchanges from Ethereum to Ethereum", async () => {
   const usdtTokenRequest: ExchangeRequest = {
     exactInput: true,
     amountIn: new Amount(10, maticUSDC.decimals, true),
-    amountOut: new Amount(0, bnbUSDT.decimals, true),
+    amountsOut: [new Amount(0, bnbUSDT.decimals, true)],
+    amountOutReadablePercentages: [100],
     tokenIn: maticUSDC,
-    tokenOut: bnbUSDT,
+    tokensOut: [bnbUSDT],
     slippageReadablePercent: 1
   }
 
   const tokenTokenRequest: ExchangeRequest = {
     exactInput: true,
     amountIn: new Amount(10, bnbDAI.decimals, true),
-    amountOut: new Amount(0, maticUSDT.decimals, true),
+    amountsOut: [new Amount(0, maticUSDT.decimals, true)],
+    amountOutReadablePercentages: [100],
     tokenIn: bnbDAI,
-    tokenOut: maticUSDT,
+    tokensOut: [maticUSDT],
     slippageReadablePercent: 1
   }
 
   const tokenUsdtRequest: ExchangeRequest = {
     exactInput: true,
     amountIn: new Amount(10, bnbDAI.decimals, true),
-    amountOut: new Amount(0, maticUSDC.decimals, true),
+    amountsOut: [new Amount(0, maticUSDC.decimals, true)],
+    amountOutReadablePercentages: [100],
     tokenIn: bnbDAI,
-    tokenOut: maticUSDC,
+    tokensOut: [maticUSDC],
     slippageReadablePercent: 1
   }
 
@@ -39,12 +42,12 @@ describe("Cross chain exchanges from Ethereum to Ethereum", async () => {
   await new Promise(r => setTimeout(r, 5_000))
 
   const allRoutes = [
-    await sdk.findRoutes(usdtTokenRequest),
-    await sdk.findRoutes(tokenTokenRequest),
-    await sdk.findRoutes(tokenUsdtRequest)
+    await sdk.findRoute(usdtTokenRequest),
+    await sdk.findRoute(tokenTokenRequest),
+    await sdk.findRoute(tokenUsdtRequest)
   ]
 
-  const forceNormalRoutes = allRoutes as SimulatedRoute[][]
+  const forceNormalRoutes = allRoutes as SimulatedRoute[]
 
   if (allRoutes.some(r => r instanceof Error)) {
     throw new Error("routes must not be an error: " + allRoutes.find(r => r instanceof Error)?.message)
@@ -54,31 +57,27 @@ describe("Cross chain exchanges from Ethereum to Ethereum", async () => {
     expect(allRoutes.some(r => r instanceof Error)).toBeFalsy()
   })
 
-  it("should return at least one route in each request", async () => {
-    expect(forceNormalRoutes.map(r => r.length).some(l => l === 0)).toBeFalsy()
-  })
-
   it("should compute correct price impact for known tokens", async () => {
     forceNormalRoutes.forEach(routes => {
-      expect(Math.abs(routes[0].priceImpactPercent)).toBeLessThan(99)
-      expect(Math.abs(routes[0].priceImpactPercent)).toBeGreaterThan(0)
+      expect(Math.max(...routes.priceImpactPercents.map(Math.abs))).toBeLessThan(99)
+      expect(Math.min(...routes.priceImpactPercents.map(Math.abs))).toBeGreaterThan(0)
     })
   })
 
   it("should return routes in different network", async () => {
     forceNormalRoutes.forEach(routes => {
-      expect(routes[0].tokenIn.network.name).not.toEqual(routes[0].tokenOut.network.name)
+      expect(routes.tokenIn.network.name).not.toEqual(routes.tokensOut[0].network.name)
     })
   })
 
   it("should compute correct output amount", async () => {
     forceNormalRoutes.forEach(routes => {
-      expect(routes[0].amountOut.toReadable()).not.toEqual(1)
+      expect(routes.amountsOut[0].toReadable()).not.toEqual(1)
     })
   })
 
   it("should build quota", async () => {
-    const quota = await sdk.createQuotaFromRoute(Address.from(Address.zeroAddress), forceNormalRoutes[0][0])
+    const quota = await sdk.createQuotaFromRoute(Address.from(Address.zeroAddress), forceNormalRoutes[0])
 
     if (quota instanceof Error) {
       throw new Error("quota must not be an error: " + quota.message)

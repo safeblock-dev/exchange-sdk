@@ -68,15 +68,28 @@ const maticUSDT = {
   network: matic
 }
 
+const maticWMATIC = {
+  address: Address.from(Address.wrappedOf(matic)),
+  decimals: 18,
+  network: matic
+}
+
+const maticMATIC = {
+  address: Address.from(Address.zeroAddress),
+  decimals: 18,
+  network: matic
+}
+
 const sdkConfig: SdkConfig = {
   routePriceDifferenceLimit: 20,
+  //debugLogListener: console.log,
   backend: {
     url: "https://api.safeblock.com"
   },
   extensions: env => [
     new TokensListExtension(env.sdk, env.eventBus, {
       [bnb.name]: [bnbUSDT, bnbDAI, bnbDOGE, bnbUSDC],
-      [matic.name]: [maticUSDC, maticUSDT],
+      [matic.name]: [maticUSDC, maticUSDT, maticMATIC, maticWMATIC],
       [mainnet.name]: [mainnetUSDT, mainnetETH, mainnetUSDC],
       [base.name]: [baseUSDC, baseWETH]
     }),
@@ -95,8 +108,10 @@ export {
   mainnetUSDT,
   mainnetETH,
   mainnetUSDC,
+  maticMATIC,
   bnbUSDC,
   baseWETH,
+  maticWMATIC,
   baseUSDC,
   sdkConfig
 }

@@ -2,12 +2,12 @@ import { Address } from "@safeblock/blockchain-utils"
 import EvmConverter from "~/sdk/evm-converter"
 import { ExchangeUtils } from "~/sdk/exchange-utils"
 import SafeBlock from "~/sdk/index"
+import SdkException, { SdkExceptionCode } from "~/sdk/sdk-exception"
 import SdkExtension, { ExtractConfigExtensionsType, ExtractEvents } from "~/sdk/sdk-extension"
 import { InternalMixinList, SdkMixins } from "~/sdk/sdk-mixins"
 import StateManager from "~/sdk/state-manager"
 import { ExchangeRequest, SimulatedRoute } from "~/types"
 import EventBus, { EventIdentifier } from "~/utils/event-bus"
-import SdkException, { SdkExceptionCode } from "~/sdk/sdk-exception"
 
 type TAddressesList = { [p: string]: string } & { default: string }
 
@@ -84,17 +84,17 @@ export default class SdkCore<Configuration extends SdkConfig = SdkConfig> extend
 
 
   // Other stuff
-  public findRoutes(request: ExchangeRequest) {
+  public findRoute(request: ExchangeRequest) {
     const converter = this.resolveConverter()
 
-    return converter.fetchRoutes(request, this.currentTask)
+    return converter.fetchRoute(request, this.currentTask)
   }
 
   public async createQuotaFromRoute(from: Address, route: SimulatedRoute) {
     const request = this.routeToRequest(route)
     const converter = this.resolveConverter()
 
-    if (route.tokenIn.network === route.tokenOut.network) {
+    if (route.tokenIn.network === route.tokensOut[0].network) {
       if (ExchangeUtils.isWrapUnwrap(route)) {
         const wrapUnwrap = converter.createSingleChainWrapUnwrapTransaction(request)
 
@@ -128,34 +128,59 @@ export default class SdkCore<Configuration extends SdkConfig = SdkConfig> extend
       const extensionInstance = this.extension(extension)
 
       return callback(extensionInstance)
-    } catch {
+    }
+    catch {
       return null
     }
   }
 
-  protected attachExtensions(extensions: ExtractConfigExtensionsType<Configuration["extensions"]>) {
-    const eventNamesList: string[] = []
+  protected attachExtensions(extensions: ExtractConfigExtensionsType<Configuration["extensions"]>, instance: SafeBlock, allowInitErrors = true) {
     const nameRegex = /^(?!\d)(?!\d+$)[a-zA-Z][a-zA-Z0-9]*$/g
 
-    extensions.forEach(extension => {
-      eventNamesList.push(...Object.keys(extension.events).map(name => name.toLowerCase()))
+    if (this._extensions.length !== 0) throw new SdkException("Fatal error due extension initialization: attempted to initialize" +
+      " extensions twice", SdkExceptionCode.ExtensionInitError)
 
-      if (extension.name === "SdkExtension") throw new SdkException("Cannot use default name for extension initialization",
-        SdkExceptionCode.ExtensionInitError)
+    const processExtensionInitializationError = (extension: SdkExtension, index: number, message: string) => {
+      this.sdkConfig.debugLogListener?.(`Init: Error due ${ extension.name } (#${index}) initialization: ${ message }`)
+
+      if (!allowInitErrors) throw new SdkException(message, SdkExceptionCode.ExtensionInitError)
+    }
+
+    extensions.forEach((extension, index) => {
+      const initException = processExtensionInitializationError.bind(this, extension, index)
+
+      if (!(extension instanceof SdkExtension))
+        return initException(`Extension cannot be processed due to invalid constructor`)
+
+      if (extension.name === "SdkExtension") return initException("Cannot use default name for extension initialization")
+
+      // Init cycle
+      const eventNamesList: string[] = []
+
+      this._extensions.forEach(existingExtension => {
+        eventNamesList.push(...Object.keys(existingExtension.events).map(name => name.toLowerCase()))
+      })
+
+      if (this._extensions.some(ex => ex.name === extension.name))
+        return initException("Extension with same name already initialized")
+
+      const duplicateEventNamesFound = Object.keys(extension.events).map(i => i.toLowerCase())
+        .some(extensionEventNames => eventNamesList.includes(extensionEventNames))
+
+      if (duplicateEventNamesFound)
+        return initException("Extension attempted to declare events that already been declared by another extension")
+
+      if (Object.keys(extension.events).some(eventName => eventName.match(nameRegex)?.[0] !== eventName || eventName.trim().length <= 4))
+        return initException("Extension attempted to declare event with invalid name")
+
+      try {
+        extension.onInitialize(instance)
+
+        this._extensions.push(extension)
+      } catch (e: any) {
+        initException(`Initialization method raised error: ${ e?.message?.toString() ?? "cannot extract error message" }`)
+      }
     })
-
-    if (new Set(eventNamesList).size !== eventNamesList.length) throw new SdkException(
-      "Cannot register identical event names in multiple extensions",
-      SdkExceptionCode.ExtensionInitError
-    )
-
-    eventNamesList.forEach(eventName => {
-      if (eventName.match(nameRegex)?.[0] === eventName) return
-
-      throw new SdkException(`Cannot register invalid event name ${eventName}`, SdkExceptionCode.ExtensionInitError)
-    })
-
-    this._extensions = extensions
   }
 
   private resolveConverter() {

@@ -2,6 +2,8 @@ import { exchangeConstants } from "~/config"
 import { RouteStep } from "~/types"
 
 export default function convertPairsToHex(route: RouteStep[]) {
+  if (route.length === 0) return []
+
   return route.map(i => {
     const address = i.address.toString().slice(2)
     // const fee = ExchangeConstants.DefaultV2Fee.padStart(6, "0")

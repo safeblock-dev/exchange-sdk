@@ -1,9 +1,9 @@
 # SafeBlock Exchange SDK
 
-The SafeBlock Exchange SDK is a comprehensive toolkit for building decentralized 
-applications with cross-chain swap, bridging, and token management functionalities. 
+The SafeBlock Exchange SDK is a comprehensive toolkit for building decentralized
+applications with cross-chain swap, bridging, and token management functionalities.
 It streamlines interactions with EVM-based networks through a clean extension system,
-supporting default modules for tokens, price retrieval, and event handling. 
+supporting default modules for tokens, price retrieval, and event handling.
 
 ## Table of Contents
 
@@ -14,6 +14,8 @@ supporting default modules for tokens, price retrieval, and event handling.
     - [Default Extensions Configuration](#default-extensions-configuration)
     - [Finding Routes](#finding-routes)
     - [Creating a Quote](#creating-a-quote)
+    - [Split Swapping](#split-swapping)
+- [Advanced Usage](#advanced-usage)
     - [Subscribing for Events](#subscribing-for-events)
     - [Unsubscribing from Events](#unsubscribing-from-events)
     - [Events List](#events-list)
@@ -24,6 +26,8 @@ supporting default modules for tokens, price retrieval, and event handling.
     - [Configuring Extension](#configuring-extension)
     - [Events Bus](#events-bus)
     - [Using Mixins](#using-mixins)
+    - [Debugging Extensions](#debugging-extensions)
+    - [Extensions Load Order](#extensions-load-order)
 - [Testing](#testing)
 - [License](#license)
 
@@ -43,9 +47,12 @@ If you want to get the latest features or just test preview builds, install the 
 npm[yarn] add @safeblock/exchange-sdk@preview
 ```
 
-_**Note**: Pre-release builds may be unstable or contain features that may be completely changed or removed after release or in future preview updates of the same version._
+_**Note**: Pre-release builds may be unstable or contain features that may be completely changed or removed after
+release or in future preview updates of the same version._
 
 ## Usage
+
+_This section touches on basic SDK concepts and provides enough knowledge to get you started with confidence_
 
 ### Importing the SDK
 
@@ -58,6 +65,11 @@ const sdk = new SafeBlock({
   // Optional, default is 20, will skip all routes with a price impact
   // more than 20 percent
   routePriceDifferenceLimit: 20,
+
+  // Optional, processor for SDK debug logs, disabled by
+  // default. Enable it only if you need to debug
+  // extension or experience troubles using SDK
+  debugLogListener: console.log,
 
   // Soft limit for the number of routes in a batch call,
   // will try to retrieve as many direct routes as possible
@@ -144,18 +156,25 @@ at least two tokens for each network to the token list, one of which must be USD
 After setting up the SDK, you can start obtaining exchange data. The first step is to find routes:
 
 ```typescript
-import { Address, Amount, bnb } from "@safeblock/blockchain-utils"
+import { Address, Amount, bnb, ExchangeRequest } from "@safeblock/blockchain-utils"
 
-const request = {
+const request: ExchangeRequest = {
   tokenIn: { network: bnb, address: Address.from("0xTokenInAddress"), decimals: 18 },
-  tokenOut: { network: bnb, address: Address.from("0xTokenOutAddress"), decimals: 18 },
+  tokensOut: [
+    { network: bnb, address: Address.from("0xTokenOutAddress"), decimals: 18 }
+  ],
   amountIn: Amount.from(1, 18, true),
-  amountOut: Amount.from(0, 18, true), // Any amount, because exactInput is true
+  amountOutReadablePercentages: [
+    100 // Split swap percentage, use 100 for signle token exchanges
+  ],
+  amountsOut: [
+    Amount.from(0, 18, true), // Any amount, because exactInput is true
+  ],
   exactInput: true,
   slippageReadablePercent: 1 // e.g. 1%
 }
 
-const routes = await sdk.findRoutes(request) // => SdkError or list of routes
+const route = await sdk.findRoute(request) // => SdkException or SimulatedRoute
 ```
 
 ### Creating a Quote
@@ -164,10 +183,7 @@ A quote is a representation of a swap that contains all the data for the
 upcoming swap and ready-to-use calldata for the transaction:
 
 ```typescript
-// Select a route from the simulation results
-// Routes array is sorted by price impact, from lower to higher
-// so the first entry will be the best route provided
-const route = routes[0]
+// Pass here a route from the simulation result to create exchange quota
 const quota = await sdk.createQuotaFromRoute(Address.from("0xYourAddress"), route) // => Error or quota
 ```
 
@@ -186,6 +202,53 @@ const quota = await sdk.createQuota(Address.from("0xYourAddress"), request, task
 ```
 
 This method automatically calculates the routes and returns the best possible quote.
+
+### Split Swapping
+
+Starting with `v1.1.0-preview.1`, the SDK now has the ability to perform split swaps.
+
+Split swap is the exchange of one token for several other tokens
+within one or more networks. An example of obtaining a split swap quota:
+
+```ts
+// Let's imagine that we have tokenA - input token
+// and tokenB, tokenC - output tokens...
+
+const request: ExchangeRequest = {
+  tokenIn: tokenA,
+  tokensOut: [
+    tokenB, // Specify all output tokens
+    tokenC
+  ],
+  amountIn: Amount.from(10, tokenA.decimals, true),
+  amountOutReadablePercentages: [
+    50, // Select the percentage of output amounts
+    50  // In this case you will exchange 5 tokenA 
+        // to tokenB and 5 tokenA to tokenC       
+  ],
+  amountsOut: [
+    Amount.from(0, 18, true), // Any amount, because exactInput is true
+    Amount.from(0, 18, true)  // But should always have same length as tokensOut array
+  ],
+  exactInput: true, // Should always be true for split swap
+  slippageReadablePercent: 1 // e.g. 1%
+}
+
+// What happens next is the same as a normal exchange...
+```
+
+As you can see, split swap is virtually no different from regular swap.
+
+Although we try to provide the best possible SDK experience, the Split swap feature has some limitations:
+
+- You cannot perform split swaps for tokens on different networks: you can swap a token from one network for multiple
+  tokens on another network, but all output tokens must be on the same target network
+- Cannot perform exact output exchanges: due to the complexity of the split-exchange logic, it is currently impossible
+  to specify the exact amount you would like to receive in each output token
+
+## Advanced Usage
+
+_This section touches on the more advanced concepts and techniques required for advanced SDK interaction_
 
 ### Subscribing for Events
 
@@ -299,7 +362,7 @@ for (const data of quota.executorCallData) {
 
 ## Extensions API
 
-**Note**: The extension system has been available since SDK version v1.0.0-preview.4.
+**Note**: The extension system has been available since SDK version `v1.0.0-preview.4`.
 
 Any extension for the SDK is a class that extends the abstract `SdkExtension` class and implements its methods.
 A basic extension looks like this:
@@ -491,6 +554,70 @@ In this example, the extension modifies the amount of gas used by the swap execu
 usage.
 
 **You can find the list of available mixins here:** [MIXINS.md](MIXINS.md)
+
+### Debugging Extensions
+
+You can debug extensions using standard SDK debug logging interface `debugLogListener`:
+
+```ts
+const sdk = new SafeBlock({
+  // ... configuration
+  debugLogListener: console.log
+})
+```
+
+Code below will output SDK debug logs into browser's or application's console
+
+When you initialize the extensions, you will see the following messages:
+
+```text
+Init: Loading extensions (2): TokensListExtension, PriceStorageExtension
+Init: Successfully initialized 2 extensions
+```
+
+If there is nothing else in the `Init` section except such messages, it means that all
+your extensions have been initialized successfully
+
+In case of extension initialization errors, the extensions themselves will
+be disabled and the following will appear in the logs:
+
+```text
+Init: Loading extensions (3): TokensListExtension, PriceStorageExtension, MyInvalidExtension
+Init: Error due MyInvalidExtension (#2) initialization: <reason>
+Init: Successfully initialized 2 extensions
+```
+
+List of standard extension initialization errors:
+
+| Message                                                                               | Description                                                                                                                                          |
+|---------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Extension cannot be processed due to invalid constructor                              | Extension with specific index not extends SdkExtension or extends it incorrectly                                                                     |
+| Cannot use default name for extension initialization                                  | Default name `SdkExtension` cannot be used as extension name                                                                                         |
+| Extension with same name already initialized                                          | _Describes itself_                                                                                                                                   |
+| Extension attempted to declare events that already been declared by another extension | Example: if previous extension already declared event `onTokenAdded`, there will be init error when another extension attempts to declare same event |
+| Extension attempted to declare event with invalid name                                | Extension event names should match following regex: `^(?!\d)(?!\d+$)[a-zA-Z][a-zA-Z0-9]*$`                                                           |
+| Initialization method raised error: \<message\>                                       | When trying to call `.onInitialize` method there is error raised                                                                                     |
+
+In a standard configuration, extensions with initialization errors
+will simply not be added to the extension pool and the user will
+not be able to access them.
+
+In some situations, when initialization problems prevent further operation
+of the SDK, the initialization process may be terminated with an error
+of `Fatal` type, in which case the SDK will not be able to continue functioning.
+
+### Extensions Load Order
+
+The order in which extensions are initialized is determined by their index in the extension array.
+of the extensions array.
+
+It is strongly recommended to add critical extensions such as `TokensListExtension` and `PriceStoreExtension` to the
+array first
+critical extensions, such as `TokensListExtension` and `PriceStoreExtension`,
+and only then other custom extensions, so that when attempts are made to declare overlapping events or extensions.
+declaring overlapping events or extensions with identical names will disable the invalid extensions rather than the
+critical ones.
+invalid extensions, not critical ones.
 
 ## Testing
 
