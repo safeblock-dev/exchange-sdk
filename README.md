@@ -312,8 +312,8 @@ const signer = JsonRpcSigner // your ethers signer
 for (const data of quota.executorCallData) {
   const transaction = await sdk.prepareEthersTransaction(data, signer)
 
-// In case of any errors, the prepareEthersTransaction method will return
-// a standard SdkException error
+  // In case of any errors, the prepareEthersTransaction method will return
+  // a standard SdkException error
   if (transaction instanceof SdkException) {
     console.log("Error occurred", transaction.code, transaction.message)
     return
@@ -340,23 +340,23 @@ build a transaction manually:
 // quota and signer variables are the same as in the previous example
 
 for (const data of quota.executorCallData) {
-// Basic transaction parameters
+  // Basic transaction parameters
   const transactionData = data.callData // transaction data
   const network = data.network.chainId // chain ID of the network where the transaction should be sent
   const value = data.value // native amount, may be undefined
   const to = data.to // destination address
 
-// First, estimate the gas consumption of the transaction
+  // First, estimate the gas consumption of the transaction
   const gasEstimation = 1 // replace with actual logic
 
-// Now get current fee data or only gasPrice
+  // Now get current fee data or only gasPrice
   const gasPrice = 1 // replace with actual logic
 
-// In this example we use BigNumber, but you can use any library of your choice
+  // In this example we use BigNumber, but you can use any library of your choice
   const gasLimit = new BigNumber(estimation).multipliedBy(callData.gasLimitMultiplier ?? 1).toFixed(0)
 
-// With the data gathered above, we can send the transaction: just
-// package it with your library and sign with your wallet
+  // With the data gathered above, we can send the transaction: just
+  // package it with your library and sign with your wallet
 }
 ```
 
@@ -609,15 +609,10 @@ of `Fatal` type, in which case the SDK will not be able to continue functioning.
 ### Extensions Load Order
 
 The order in which extensions are initialized is determined by their index in the extension array.
-of the extensions array.
 
 It is strongly recommended to add critical extensions such as `TokensListExtension` and `PriceStoreExtension` to the
-array first
-critical extensions, such as `TokensListExtension` and `PriceStoreExtension`,
-and only then other custom extensions, so that when attempts are made to declare overlapping events or extensions.
-declaring overlapping events or extensions with identical names will disable the invalid extensions rather than the
-critical ones.
-invalid extensions, not critical ones.
+array first and only then other custom extensions, so when attempts are made to declare overlapping events or initialize 
+extensions with identical names, the invalid extensions will be disabled rather than the critical ones.
 
 ## Testing
 
