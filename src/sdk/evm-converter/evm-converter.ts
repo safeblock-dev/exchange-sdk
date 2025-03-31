@@ -1,17 +1,16 @@
 import { Address, Amount, ethersProvider } from "@safeblock/blockchain-utils"
 import { WrappedToken__factory } from "~/abis/types"
 import { contractAddresses, publicBackendURL } from "~/config"
-import { PriceStorageExtension } from "~/extensions"
 import evmBuildRawTransaction from "~/sdk/evm-converter/evm-build-raw-transaction"
 import EvmCrossChainExtension from "~/sdk/evm-converter/evm-cross-chain-extension"
 import ExchangeConverter from "~/sdk/exchange-converter"
 import { ExchangeUtils } from "~/sdk/exchange-utils"
 import SdkCore, { SdkConfig } from "~/sdk/sdk-core"
+import SdkException, { SdkExceptionCode } from "~/sdk/sdk-exception"
 import { SdkMixins } from "~/sdk/sdk-mixins"
 import simulateRoutes from "~/sdk/simulate-routes"
 import { ExchangeQuota, ExchangeRequest, ExecutorCallData, SimulatedRoute } from "~/types"
 import getExchangeRoutes from "~/utils/get-exchange-routes"
-import SdkException, { SdkExceptionCode } from "~/sdk/sdk-exception"
 
 interface RawTransactionConverterOptions {
   from: Address
@@ -66,13 +65,14 @@ export default class EvmConverter extends ExchangeConverter {
 
     const rawQuota = {
       executorCallData: callData,
-      exchangeRoute: [options.route.originalRoute],
+      exchangeRoute: [options.route.originalRouteSet],
       amountIn: options.route.amountIn,
-      amountOut: options.route.amountOut,
+      amountsOut: options.route.amountsOut,
       tokenIn: options.route.tokenIn,
-      tokenOut: options.route.tokenOut,
+      tokensOut: options.route.tokensOut,
       slippageReadable: options.route.slippageReadablePercent,
-      priceImpact: options.route.priceImpactPercent
+      priceImpact: options.route.priceImpactPercents,
+      amountOutReadablePercentages: options.route.amountOutReadablePercentages
     }
 
     return {
@@ -102,87 +102,87 @@ export default class EvmConverter extends ExchangeConverter {
       ))
   }
 
-  public async fetchRoutes(request: ExchangeRequest, taskId: symbol): Promise<SdkException | SimulatedRoute[]> {
+  public async fetchRoute(request: ExchangeRequest, taskId: symbol): Promise<SdkException | SimulatedRoute> {
+    if (request.tokensOut.length > 1 && !request.exactInput)
+      return new SdkException("Cannot process split swap request in the exact output mode", SdkExceptionCode.InvalidRequest)
+
+    if (request.tokensOut.length !== request.amountOutReadablePercentages.length)
+      return new SdkException("Invalid split swap configuration: tokensOut and amountOutPercentages length mismatch", SdkExceptionCode.InvalidRequest)
+
     const mixin = this.mixins.getMixinApplicator("internal")
-      .getNamespaceApplicator("fetchRoutes")
+      .getNamespaceApplicator("fetchRoute")
 
     this.sdkConfig.debugLogListener?.(`Fetch: Loading routes: ${ request.amountIn.toReadable() } ${ request.tokenIn.address
-      .toString().slice(0, 10) } -> ${ request.amountOut.toReadable() } ${ request.tokenOut.address.toString().slice(0, 10) }`)
+      .toString().slice(0, 10) } -> ${ request.amountsOut.map(a => a.toReadable()).join(",") } ${ request.tokensOut.map(t => t.address.toString().slice(2, 8)).join(",") }`)
 
-    if (ExchangeUtils.isWrapUnwrap(request) && request.tokenIn.network === request.tokenOut.network) {
-      const { amountIn, amountOut, tokenIn, tokenOut, destinationAddress, slippageReadablePercent } = request
+    if (ExchangeUtils.isWrapUnwrap(request) && request.tokenIn.network === request.tokensOut[0].network && request.tokensOut.length === 1) {
+      const { amountIn, amountsOut, tokenIn, tokensOut, destinationAddress, slippageReadablePercent } = request
 
       this.sdkConfig.debugLogListener?.("Fetch: Generated fake route for wrap/unwrap transaction")
 
-      return [mixin.applyMixin("wrapUnwrapVirtualRouteBuilt", {
-        amountIn, amountOut, tokenIn, tokenOut, destinationAddress, slippageReadablePercent,
+      return mixin.applyMixin("wrapUnwrapVirtualRouteBuilt", {
+        amountIn, amountsOut, tokenIn, tokensOut, destinationAddress, slippageReadablePercent,
         isExactInput: request.exactInput,
-        priceImpactPercent: 0,
+        priceImpactPercents: [0],
         arrivalGasAmount: undefined,
-        routeReference: "",
-        usedTokensList: [ExchangeUtils.toRouteToken(request.tokenIn), ExchangeUtils.toRouteToken(request.tokenOut)],
-        originalRoute: [{
+        routeReference: "wrap-unwrap",
+        amountOutReadablePercentages: request.amountOutReadablePercentages,
+        usedTokensList: [ExchangeUtils.toRouteToken(request.tokenIn), ExchangeUtils.toRouteToken(request.tokensOut[0])],
+        originalRouteSet: [[{
           exchange_id: ExchangeUtils.ZeroExchangeId,
           fee: 0,
           version: "PAIR_WRAP_UNWRAP",
           address: request.tokenIn.address,
           token0: ExchangeUtils.toRouteToken(request.tokenIn),
-          token1: ExchangeUtils.toRouteToken(request.tokenOut)
-        }]
-      })]
+          token1: ExchangeUtils.toRouteToken(request.tokensOut[0])
+        }]]
+      })
     }
 
     const alternativeRoute = await this.rerouteCrossChainRoutesFetch(request, Address.from(Address.zeroAddress), taskId)
 
     if (alternativeRoute !== null) return alternativeRoute
 
-    const routes = mixin.applyMixin("receivedExchangeRoutes", await getExchangeRoutes({
-      backendUrl: this.sdkConfig.backend?.url ?? publicBackendURL,
-      headers: this.sdkConfig.backend?.headers,
-      bannedDexIds: this.sdkInstance.dexBlacklist.toArray(),
-      limit: this.sdkConfig.routesCountLimit ?? 3,
-      fromToken: request.tokenIn,
-      toToken: request.tokenOut
-    }))
+    const routes = await Promise.all(
+      request.tokensOut.map(tokenOut => (
+        getExchangeRoutes({
+          backendUrl: this.sdkConfig.backend?.url ?? publicBackendURL,
+          headers: this.sdkConfig.backend?.headers,
+          bannedDexIds: this.sdkInstance.dexBlacklist.toArray(),
+          limit: this.sdkConfig.routesCountLimit ?? 3,
+          fromToken: request.tokenIn,
+          toToken: tokenOut
+        })
+      ))
+    )
 
-    this.sdkConfig.debugLogListener?.(`Fetch: Received ${ routes.length } (${ this.sdkConfig.routesCountHardLimit ?? 30 } limit) raw routes for single-chain trade`)
-
-    if (!this.sdkInstance.verifyTask(taskId)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
-
-    const simulatedRoutes = mixin.applyMixin("routesSimulationFinished", await simulateRoutes(
-      request,
-      this.sdkInstance.extension(PriceStorageExtension),
-      routes.slice(0, this.sdkConfig.routesCountHardLimit ?? 30),
-      this.sdkConfig
-    ))
-
-    this.sdkConfig.debugLogListener?.(`Fetch: Raw routes simulation finished, ${ simulatedRoutes.length } routes left`)
-    if (this.sdkConfig.debugLogListener) {
-      simulatedRoutes.slice(0, 4).forEach((route, i) => {
-        this.sdkConfig.debugLogListener?.(`Simulated route ${ String(i).padStart(2, "0") } amountIn = ${ route.amountIn
-          .toReadable() }, amountOut = ${ route.amountOut.toReadable() }`)
-      })
-
-      if (simulatedRoutes.length > 4) this.sdkConfig
-        .debugLogListener?.(`... and ${ simulatedRoutes.length - 4 } more routes hidden`)
-    }
+    this.sdkConfig.debugLogListener?.(`Fetch: Received ${ routes.flat(1).length } (${ this.sdkConfig.routesCountHardLimit ?? 30 } limit) raw routes for single-chain trade`)
 
     if (!this.sdkInstance.verifyTask(taskId)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 
-    const filteredRoutes = mixin.applyMixin("routesFilteringFinished", (
-      simulatedRoutes.filter(route => ExchangeUtils
-        .filterRoutesByExpectedOutput(route, this.sdkInstance
-          .extension(PriceStorageExtension), this.sdkConfig.routePriceDifferenceLimit, this.sdkConfig))))
+    if (routes.length === 0) return new SdkException("Routes not found", SdkExceptionCode.RoutesNotFound)
 
-    this.sdkConfig.debugLogListener?.(`Fetch: Routes filtering finished, ${ filteredRoutes.length } routes left`)
+    const simulatedRoutes = this.mixins.getMixinApplicator("internal")
+      .applyMixin("fetchRoute", "receivedFinalizedRoute", await simulateRoutes(
+        request,
+        routes.slice(0, this.sdkConfig.routesCountHardLimit ?? 30),
+        this.sdkConfig,
+        this.sdkInstance
+      ))
 
-    return filteredRoutes
+    this.sdkConfig.debugLogListener?.(`Fetch: Best route output amounts: ${ simulatedRoutes.amountsOut.map(a => a.toReadable()).join(",") }`)
+
+    if (!this.sdkInstance.verifyTask(taskId)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
+
+    return simulatedRoutes
   }
 
   public createSingleChainWrapUnwrapTransaction(request: ExchangeRequest): ExchangeQuota | SdkException {
-    if (request.tokenIn.network !== request.tokenOut.network) return new SdkException("Different networks", SdkExceptionCode.InvalidRequest)
+    if (request.tokenIn.network !== request.tokensOut[0].network) return new SdkException("Different networks", SdkExceptionCode.InvalidRequest)
+    if (request.tokensOut.length > 1)
+      return new SdkException("Cannot process direct wrap/unwrap in split swap mode", SdkExceptionCode.InvalidRequest)
 
-    if (!Address.isZero(request.tokenIn.address) && !Address.isZero(request.tokenOut.address))
+    if (!Address.isZero(request.tokenIn.address) && !Address.isZero(request.tokensOut[0].address))
       return new SdkException("Not wrap unwrap", SdkExceptionCode.InvalidRequest)
 
     const wrappedAddress = Address.from(Address.wrappedOf(request.tokenIn.network))
@@ -190,12 +190,12 @@ export default class EvmConverter extends ExchangeConverter {
     if (!Address.isZero(request.tokenIn.address) && !Address.equal(request.tokenIn.address, wrappedAddress))
       return new SdkException("Not wrap unwrap", SdkExceptionCode.InvalidRequest)
 
-    if (!Address.isZero(request.tokenOut.address) && !Address.equal(request.tokenOut.address, wrappedAddress))
+    if (!Address.isZero(request.tokensOut[0].address) && !Address.equal(request.tokensOut[0].address, wrappedAddress))
       return new SdkException("Not wrap unwrap", SdkExceptionCode.InvalidRequest)
 
     const amount = request.exactInput
-      ? Amount.select(request.amountIn, request.amountOut)
-      : Amount.select(request.amountOut, request.amountIn)
+      ? Amount.select(request.amountIn, request.amountsOut[0])
+      : Amount.select(request.amountsOut[0], request.amountIn)
 
     if (!amount || amount.eq(0)) return new SdkException("Invalid amount: expected greater than zero", SdkExceptionCode.InvalidRequest)
 
@@ -233,10 +233,11 @@ export default class EvmConverter extends ExchangeConverter {
       slippageReadable: 0,
       exchangeRoute: [],
       tokenIn: request.tokenIn,
-      tokenOut: request.tokenOut,
+      tokensOut: request.tokensOut,
       amountIn: amount,
-      amountOut: amount,
-      priceImpact: 0
+      amountOutReadablePercentages: request.amountOutReadablePercentages,
+      amountsOut: [amount],
+      priceImpact: [0]
     }
 
     return this.mixins.getMixinApplicator("internal").applyMixin("createSingleChainWrapUnwrapTransaction", "quotaBuilt", {

@@ -1,6 +1,6 @@
 import { Address, Amount } from "@safeblock/blockchain-utils"
 import BigNumber from "bignumber.js"
-import { ExchangeQuota, ExecutorCallData, RouteStep, SimulatedRoute } from "~/types"
+import { ExchangeQuota, ExecutorCallData, SimulatedRoute } from "~/types"
 
 type TMixinList = { [key: string]: { [key: string]: { [key: string]: any } } }
 
@@ -12,7 +12,7 @@ export interface InternalMixinList extends TMixinList {
       arrivalGasDataEncoded: string
       multiCallTransactionRequest: ExecutorCallData
       approveTransactionRequest: ExecutorCallData
-      outputAmountsCorrected: [Amount, Amount]
+      outputAmountsCorrected: [Amount, Amount[]]
       quotaComputationFinalized: ExchangeQuota
       stargateSendV2CallData: string
       callOffset: string
@@ -31,10 +31,8 @@ export interface InternalMixinList extends TMixinList {
       receiveNativeGasUsage: number
       routeInitialGasUsage: number
     },
-    fetchRoutes: {
-      receivedExchangeRoutes: RouteStep[][]
-      routesSimulationFinished: SimulatedRoute[]
-      routesFilteringFinished: SimulatedRoute[]
+    fetchRoute: {
+      receivedFinalizedRoute: SimulatedRoute
       wrapUnwrapVirtualRouteBuilt: SimulatedRoute
     },
     createSingleChainTransaction: {

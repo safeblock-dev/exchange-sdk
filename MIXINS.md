@@ -15,7 +15,6 @@ Mixins that affect the logic for building a cross-chain exchange transaction
 | outputAmountsCorrected      | [Amount, Amount] | The quota’s output values have been finalized                                      |
 | quotaComputationFinalized   | ExchangeQuota    | The quota processing is complete                                                   |
 | stargateSendV2CallData      | string           | Encoded data has been obtained to send the payload through Stargate                |
-| callOffset                  | string           | callOffset has been determined                                                     |
 
 ## computeQuotaExecutionGasUsage
 Mixins that affect the logic for calculating the gas required to execute a quota
@@ -39,15 +38,13 @@ Mixins that affect the logic for calculating the gas required for an exchange wi
 | receiveNativeGasUsage | number    | The amount of gas needed to receive the native token at the end of the exchange   |
 | routeInitialGasUsage  | number    | The amount of gas that will be consumed by additional exchange contract functions |
 
-## fetchRoutes
+## fetchRoute
 Mixins that affect the logic of retrieving and subsequently processing routes
 
-| Name                         | Data Type         | Description                                                                |
-|------------------------------|-------------------|----------------------------------------------------------------------------|
-| receivedExchangeRoutes       | RouteStep[][]     | A list of exchange routes has been obtained                                |
-| routesSimulationFinished     | SimulatedRoute[]  | Route simulation and obtaining output values have been completed           |
-| routesFilteringFinished      | SimulatedRoute[]  | Route filtering is complete                                                |
-| wrapUnwrapVirtualRouteBuilt  | SimulatedRoute    | A virtual route has been built for the wrap or unwrap transaction          |
+| Name                        | Data Type        | Description                                                       |
+|-----------------------------|------------------|-------------------------------------------------------------------|
+| receivedFinalizedRoute      | SimulatedRoute   | Route filtering is complete                                       |
+| wrapUnwrapVirtualRouteBuilt | SimulatedRoute   | A virtual route has been built for the wrap or unwrap transaction |
 
 ## createSingleChainTransaction
 Mixins that affect the process of building an exchange transaction within a single network

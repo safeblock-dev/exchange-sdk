@@ -5,11 +5,6 @@
         "internalType": "address",
         "name": "endpointV2",
         "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "stargateComposer",
-        "type": "address"
       }
     ],
     "stateMutability": "nonpayable",
@@ -17,17 +12,17 @@
   },
   {
     "inputs": [],
-    "name": "NotLZEndpoint",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "NotStargateComposer",
-    "type": "error"
-  },
-  {
-    "inputs": [],
     "name": "StargateFacet_InvalidNativeBalance",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "StargateFacet_NotLZEndpoint",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "StargateFacet_UnsupportedAsset",
     "type": "error"
   },
   {
@@ -52,7 +47,7 @@
   },
   {
     "inputs": [],
-    "name": "TransferHelper_TransferNativeError",
+    "name": "TransientStorageFacetLibrary_InvalidSenderAddress",
     "type": "error"
   },
   {
@@ -117,57 +112,6 @@
   {
     "inputs": [
       {
-        "internalType": "uint16",
-        "name": "dstChainId",
-        "type": "uint16"
-      },
-      {
-        "internalType": "address",
-        "name": "receiver",
-        "type": "address"
-      },
-      {
-        "internalType": "bytes",
-        "name": "payload",
-        "type": "bytes"
-      },
-      {
-        "components": [
-          {
-            "internalType": "uint256",
-            "name": "dstGasForCall",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "dstNativeAmount",
-            "type": "uint256"
-          },
-          {
-            "internalType": "bytes",
-            "name": "dstNativeAddr",
-            "type": "bytes"
-          }
-        ],
-        "internalType": "struct IStargateComposer.lzTxObj",
-        "name": "lzTxParams",
-        "type": "tuple"
-      }
-    ],
-    "name": "quoteV1",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
         "internalType": "address",
         "name": "poolAddress",
         "type": "address"
@@ -217,77 +161,6 @@
   {
     "inputs": [
       {
-        "internalType": "uint16",
-        "name": "dstChainId",
-        "type": "uint16"
-      },
-      {
-        "internalType": "uint256",
-        "name": "srcPoolId",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "dstPoolId",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "amountLD",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "amountOutMinLD",
-        "type": "uint256"
-      },
-      {
-        "internalType": "address",
-        "name": "receiver",
-        "type": "address"
-      },
-      {
-        "internalType": "bytes",
-        "name": "payload",
-        "type": "bytes"
-      },
-      {
-        "components": [
-          {
-            "internalType": "uint256",
-            "name": "dstGasForCall",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "dstNativeAmount",
-            "type": "uint256"
-          },
-          {
-            "internalType": "bytes",
-            "name": "dstNativeAddr",
-            "type": "bytes"
-          }
-        ],
-        "internalType": "struct IStargateComposer.lzTxObj",
-        "name": "lzTxParams",
-        "type": "tuple"
-      }
-    ],
-    "name": "sendStargateV1",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "payable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
         "internalType": "address",
         "name": "poolAddress",
         "type": "address"
@@ -319,65 +192,8 @@
       }
     ],
     "name": "sendStargateV2",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "payable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint16",
-        "name": "",
-        "type": "uint16"
-      },
-      {
-        "internalType": "bytes",
-        "name": "",
-        "type": "bytes"
-      },
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      },
-      {
-        "internalType": "address",
-        "name": "asset",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "amountLD",
-        "type": "uint256"
-      },
-      {
-        "internalType": "bytes",
-        "name": "message",
-        "type": "bytes"
-      }
-    ],
-    "name": "sgReceive",
     "outputs": [],
-    "stateMutability": "payable",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "stargateV1Composer",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
+    "stateMutability": "nonpayable",
     "type": "function"
   }
 ]

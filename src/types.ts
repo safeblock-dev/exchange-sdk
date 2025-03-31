@@ -42,7 +42,7 @@ export interface RouteStep extends Omit<BackendResponse.IBackendRouteStep, "toke
   token1: BasicToken & { fee: number }
 }
 
-export interface SimulatedRoute {
+export interface SingleOutputSimulatedRoute {
   originalRoute: RouteStep[]
   routeReference: string
 
@@ -51,6 +51,19 @@ export interface SimulatedRoute {
   amountIn: Amount
   amountOut: Amount
 
+  isExactInput: boolean
+}
+
+export interface SimulatedRoute {
+  originalRouteSet: RouteStep[][]
+  routeReference: string
+
+  tokenIn: BasicToken
+  tokensOut: BasicToken[]
+  amountIn: Amount
+  amountsOut: Amount[]
+  amountOutReadablePercentages: number[]
+
   slippageReadablePercent: number
 
   isExactInput: boolean
@@ -58,15 +71,16 @@ export interface SimulatedRoute {
   destinationAddress?: Address
   arrivalGasAmount?: Amount
 
-  priceImpactPercent: number
+  priceImpactPercents: number[]
   usedTokensList: BasicToken[]
 }
 
 export interface ExchangeRequest {
   tokenIn: BasicToken
-  tokenOut: BasicToken
+  tokensOut: BasicToken[]
   amountIn: Amount
-  amountOut: Amount
+  amountsOut: Amount[]
+  amountOutReadablePercentages: number[]
   exactInput: boolean
   slippageReadablePercent: number
   destinationAddress?: Address
@@ -83,12 +97,13 @@ export type ExecutorCallData = {
 
 export interface ExchangeQuota {
   executorCallData: ExecutorCallData[]
-  exchangeRoute: RouteStep[][],
+  exchangeRoute: RouteStep[][][],
   estimatedGasUsage: Record<string, Amount>
   amountIn: Amount
-  amountOut: Amount
+  amountsOut: Amount[]
   tokenIn: BasicToken
-  tokenOut: BasicToken
+  tokensOut: BasicToken[]
+  amountOutReadablePercentages: number[]
   slippageReadable: number
-  priceImpact: number
+  priceImpact: number[]
 }

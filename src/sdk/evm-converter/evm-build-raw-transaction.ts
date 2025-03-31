@@ -2,22 +2,31 @@ import { Address } from "@safeblock/blockchain-utils"
 import BigNumber from "bignumber.js"
 import { Entrypoint__factory, MultiswapRouterFaucet__factory, TransferFaucet__factory } from "~/abis/types"
 import { SimulatedRoute } from "~/types"
+import adjustPercentages from "~/utils/adjust-percentages"
 import convertPairsToHex from "~/utils/convert-pairs-to-hex"
 
 export default async function evmBuildRawTransaction(from: Address, route: SimulatedRoute) {
-  const pairsHex = convertPairsToHex(route.originalRoute)
+  const pairsHex = route.originalRouteSet.map(route => convertPairsToHex(route))
 
   const multiSwapIface = MultiswapRouterFaucet__factory.createInterface()
 
-  const multiSwapData = multiSwapIface.encodeFunctionData("multiswap", [
+  const multiSwapData = multiSwapIface.encodeFunctionData("multiswap2", [
     {
-      amountIn: route.amountIn.toBigInt(),
-      minAmountOut: new BigNumber(100)
-        .minus(route.slippageReadablePercent ?? 1)
-        .multipliedBy(route.amountOut.toString())
-        .div(100)
-        .toFixed(0),
+      fullAmount: route.amountIn.toBigInt(),
+      amountInPercentages: adjustPercentages(route.amountOutReadablePercentages),
+      minAmountsOut: route.amountsOut.map((amount, index) => {
+        if (route.originalRouteSet[index].length === 0) return "0" // Tokens transfer only
+
+        return new BigNumber(100)
+          .minus(route.slippageReadablePercent ?? 1)
+          .multipliedBy(amount.toString())
+          .div(100)
+          .toFixed(0)
+      }),
       tokenIn: route.tokenIn.address.toString(),
+      tokensOut: route.tokensOut.map(token => token.address.equalTo(Address.zeroAddress)
+        ? Address.wrappedOf(token.network)
+        : token.address.toString()),
       pairs: pairsHex
     }
   ])
@@ -26,25 +35,28 @@ export default async function evmBuildRawTransaction(from: Address, route: Simul
 
   const destinationAddress = route.destinationAddress || from || Address.zeroAddress
 
-  let transferData: string
+  let transferData: string[] = []
 
-  if (Address.isZero(route.tokenOut.address)) {
-    transferData = transferFaucetIface.encodeFunctionData("unwrapNativeAndTransferTo", [
+  if (route.tokensOut.some(token => token.address.equalTo(Address.zeroAddress))) {
+    transferData.push(transferFaucetIface.encodeFunctionData("unwrapNativeAndTransferTo", [
       destinationAddress.toString()
-    ])
-  } else {
-    transferData = transferFaucetIface.encodeFunctionData("transferToken", [
-      destinationAddress.toString()
-    ])
+    ]))
+  }
+
+  if (route.tokensOut.length > 1 || !route.tokensOut.some(token => token.address.equalTo(Address.zeroAddress))) {
+    transferData.push(transferFaucetIface.encodeFunctionData("transferToken", [
+      destinationAddress.toString(),
+      route.tokensOut.filter(t => !t.address.equalTo(Address.zeroAddress))
+        .map(t => t.address.toString())
+    ]))
   }
 
   const entryPointIface = Entrypoint__factory.createInterface()
 
-  const multiCallData = entryPointIface.encodeFunctionData("multicall(bytes32,bytes[])", [
-    "0x0000000000000000000000000000000000000000000000000000000000000000",
+  const multiCallData = entryPointIface.encodeFunctionData("multicall", [
     [
       multiSwapData,
-      transferData
+      ...transferData
     ]
   ])
 

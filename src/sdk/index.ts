@@ -28,17 +28,11 @@ export default class SafeBlock<Configuration extends SdkConfig = SdkConfig> exte
     if (extensions.length === 0) return
 
     const extensionNames = extensions.map(ext => ext.name)
-    this.sdkConfig.debugLogListener?.(`Loading extensions: ${ extensionNames.join(", ") }`)
+    this.sdkConfig.debugLogListener?.(`Init: Loading extensions (${ extensionNames.length }): ${ extensionNames.join(", ") }`)
 
-    if (new Set(extensionNames).size !== extensionNames.length) {
-      throw new SdkException("Cannot initialize extensions with identical names", SdkExceptionCode.ExtensionInitError)
-    }
+    super.attachExtensions(extensions, this)
 
-    super.attachExtensions(extensions)
-
-    extensions.forEach(extension => extension.onInitialize(this))
-
-    this.sdkConfig.debugLogListener?.("All extensions initialized")
+    this.sdkConfig.debugLogListener?.(`Init: Successfully initialized ${ this._extensions.length } extensions`)
 
     // @ts-ignore
     this.eventBus.emitEvent("onExtensionsInitializationFinished", extensionNames)
@@ -57,14 +51,13 @@ export default class SafeBlock<Configuration extends SdkConfig = SdkConfig> exte
   }
 
   public async createQuota(from: Address, request: ExchangeRequest, task: symbol) {
-    const routes = await this.findRoutes(request)
+    const routes = await this.findRoute(request)
 
     if (!this.verifyTask(task)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 
     if (routes instanceof SdkException) return routes
-    if (routes.length === 0) return new SdkException("Routes not found", SdkExceptionCode.RoutesNotFound)
 
-    const quota = this.createQuotaFromRoute(from, routes[0])
+    const quota = this.createQuotaFromRoute(from, routes)
     if (!this.verifyTask(task)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 
     return quota

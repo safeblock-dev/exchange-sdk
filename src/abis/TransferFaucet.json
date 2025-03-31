@@ -32,11 +32,6 @@
   },
   {
     "inputs": [],
-    "name": "TransferHelper_TransferNativeError",
-    "type": "error"
-  },
-  {
-    "inputs": [],
     "name": "TransientStorageFacetLibrary_InvalidSenderAddress",
     "type": "error"
   },
@@ -88,13 +83,7 @@
       }
     ],
     "name": "transferFromPermit2",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
+    "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   },
@@ -104,16 +93,15 @@
         "internalType": "address",
         "name": "to",
         "type": "address"
+      },
+      {
+        "internalType": "address[]",
+        "name": "tokens",
+        "type": "address[]"
       }
     ],
     "name": "transferToken",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
+    "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   },
@@ -126,13 +114,7 @@
       }
     ],
     "name": "unwrapNativeAndTransferTo",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
+    "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   }

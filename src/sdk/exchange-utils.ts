@@ -3,16 +3,15 @@ import BigNumber from "bignumber.js"
 import { toUtf8Bytes } from "ethers"
 import { BridgeFaucet__factory, LayerZero__factory, Token__factory } from "~/abis/types"
 import { contractAddresses, stargateNetworksMapping } from "~/config"
-import { PriceStorageExtension } from "~/extensions"
+import PriceStorageExtension from "~/extensions/price-storage-extension"
 import { SdkConfig } from "~/sdk"
-import { SdkMixins } from "~/sdk/sdk-mixins"
-import { ExchangeQuota, ExchangeRequest, RouteStep, SimulatedRoute } from "~/types"
 import SdkException, { SdkExceptionCode } from "~/sdk/sdk-exception"
-import { BasicToken } from "~/types"
+import { SdkMixins } from "~/sdk/sdk-mixins"
+import { BasicToken, ExchangeQuota, ExchangeRequest, RouteStep, SingleOutputSimulatedRoute } from "~/types"
 
 interface BasicRequest {
   tokenIn: BasicToken
-  tokenOut: BasicToken
+  tokensOut: BasicToken[]
 }
 
 export class ExchangeUtils {
@@ -30,7 +29,7 @@ export class ExchangeUtils {
 
       const lzContract = LayerZero__factory.connect(contractAddresses.entryPoint(request.tokenIn.network, config), ethersProvider(request.tokenIn.network))
 
-      const nativeCap = new BigNumber((await lzContract.getNativeSendCap(stargateNetworksMapping(request.tokenOut.network))).toString())
+      const nativeCap = new BigNumber((await lzContract.getNativeSendCap(stargateNetworksMapping(request.tokensOut[0].network))).toString())
 
       config?.debugLogListener?.("ArrivalGas: Native cap: " + nativeCap.toFixed())
 
@@ -38,12 +37,12 @@ export class ExchangeUtils {
 
       config?.debugLogListener?.("ArrivalGas: Amount updated: " + amount.toBigNumber().toFixed())
 
-      const lzFee = await lzContract.estimateFee(stargateNetworksMapping(request.tokenOut.network), amount.toBigNumber().toFixed(), Address.zeroAddress)
+      const lzFee = await lzContract.estimateFee(stargateNetworksMapping(request.tokensOut[0].network), amount.toBigNumber().toFixed(), Address.zeroAddress)
 
       config?.debugLogListener?.("ArrivalGas: LzFee get: " + lzFee.toString())
 
       const callData = lzContract.interface.encodeFunctionData("sendDeposit", [
-        stargateNetworksMapping(request.tokenOut.network),
+        stargateNetworksMapping(request.tokensOut[0].network),
         amount.toBigInt(),
         (request.destinationAddress ?? address).toString()
       ])
@@ -64,7 +63,7 @@ export class ExchangeUtils {
     try {
       return await bridgeContract.quoteV2(
         contractAddresses.stargateUSDCPool(request.tokenIn.network),
-        stargateNetworksMapping(request.tokenOut.network),
+        stargateNetworksMapping(request.tokensOut[0].network),
         amountLD,
         (request.destinationAddress || address || Address.zeroAddress).toString(),
         destinationChainCallData || toUtf8Bytes(""),
@@ -95,24 +94,26 @@ export class ExchangeUtils {
   }
 
   public static isWrap(request: BasicRequest) {
-    if (request.tokenIn.network.name !== request.tokenOut.network.name) return false
+    if (request.tokenIn.network.name !== request.tokensOut[0].network.name) return false
+    if (request.tokensOut.length !== 1) return false
 
     return request.tokenIn.address.equalTo(Address.zeroAddress)
-      && request.tokenOut.address.equalTo(Address.wrappedOf(request.tokenIn.network))
+      && request.tokensOut[0].address.equalTo(Address.wrappedOf(request.tokenIn.network))
   }
 
   public static isUnwrap(request: BasicRequest) {
-    if (request.tokenIn.network.name !== request.tokenOut.network.name) return false
+    if (request.tokenIn.network.name !== request.tokensOut[0].network.name) return false
+    if (request.tokensOut.length !== 1) return false
 
-    return request.tokenIn.address.equalTo(Address.wrappedOf(request.tokenOut.network))
-      && request.tokenOut.address.equalTo(Address.zeroAddress)
+    return request.tokenIn.address.equalTo(Address.wrappedOf(request.tokensOut[0].network))
+      && request.tokensOut[0].address.equalTo(Address.zeroAddress)
   }
 
   public static isWrapUnwrap(request: BasicRequest) {
     return this.isWrap(request) || this.isUnwrap(request)
   }
 
-  private static computeOnchainTradeGasUsage(route: RouteStep[], receiveNative = false, mixinBuilder: SdkMixins) {
+  private static computeOnchainTradeGasUsage(routeSet: RouteStep[][], receiveNativeCount = 0, mixinBuilder: SdkMixins) {
     const mixin = mixinBuilder.getMixinApplicator("internal")
       .getNamespaceApplicator("computeOnchainTradeGasUsage")
 
@@ -122,12 +123,14 @@ export class ExchangeUtils {
 
     let routeGasUsage = new BigNumber(mixin.applyMixin("routeInitialGasUsage", 80_000))
 
-    if (route.length === 0) return routeGasUsage
-    route.forEach(step => {
-      routeGasUsage = routeGasUsage.plus(step.version === "PAIR_VERSION_UNISWAP_V3" ? uniswapV3StepGasUsage : uniswapV2StepGasUsage)
+    if (routeSet.length === 0) return routeGasUsage
+    routeSet.forEach(route => {
+      route.map(step => {
+        routeGasUsage = routeGasUsage.plus(step.version === "PAIR_VERSION_UNISWAP_V3" ? uniswapV3StepGasUsage : uniswapV2StepGasUsage)
+      })
     })
 
-    if (receiveNative) routeGasUsage.plus(receiveNativeGasUsage)
+    if (receiveNativeCount > 0) routeGasUsage.plus(receiveNativeGasUsage * receiveNativeCount)
 
     return routeGasUsage
   }
@@ -148,11 +151,12 @@ export class ExchangeUtils {
     const stargateSwapMessageGasUsage = mixin.applyMixin("stargateSwapMessageGasUsage", 660_000)
     const stargateHollowMessageGasUsage = mixin.applyMixin("stargateHollowMessageGasUsage", 500_000)
 
-    if (quota.tokenIn.network.name === quota.tokenOut.network.name)
-      return { [quota.tokenIn.network.name]: Amount.from(this.computeOnchainTradeGasUsage(quota.exchangeRoute[0] ?? [], quota.tokenOut.address.equalTo(Address.zeroAddress), mixinBuilder), 18, true) }
+    const receiveNativeAmount = quota.tokensOut.filter(i => i.address.equalTo(Address.zeroAddress)).length
+    if (quota.tokenIn.network.name === quota.tokensOut[0].network.name)
+      return { [quota.tokenIn.network.name]: Amount.from(this.computeOnchainTradeGasUsage(quota.exchangeRoute[0] ?? [], receiveNativeAmount, mixinBuilder), 18, true) }
 
-    const sourceChainExecutionGasUsage = this.computeOnchainTradeGasUsage(quota.exchangeRoute[0] ?? [], false, mixinBuilder)
-    const destinationChainExecutionGasUsage = this.computeOnchainTradeGasUsage(quota.exchangeRoute[1] ?? [], quota.tokenOut.address.equalTo(Address.zeroAddress), mixinBuilder)
+    const sourceChainExecutionGasUsage = this.computeOnchainTradeGasUsage(quota.exchangeRoute[0] ?? [], 0, mixinBuilder)
+    const destinationChainExecutionGasUsage = this.computeOnchainTradeGasUsage(quota.exchangeRoute[1] ?? [], receiveNativeAmount, mixinBuilder)
 
     const stargateGasUsage = sourceChainExecutionGasUsage.eq(0) ? stargateHollowMessageGasUsage : stargateSwapMessageGasUsage
 
@@ -160,14 +164,14 @@ export class ExchangeUtils {
       [quota.tokenIn.network.name]: Amount.from(sourceChainExecutionGasUsage.plus(stargateGasUsage)
         .plus(quota.executorCallData.length > 0 ? mixin.applyMixin("multiStepExchangeWrapperGasUsage", 45_000) : 0)
         .multipliedBy(mixin.applyMixin("finalMultiplier", 1.15)), 18, true),
-      [quota.tokenOut.network.name]: Amount.from(destinationChainExecutionGasUsage
+      [quota.tokensOut[0].network.name]: Amount.from(destinationChainExecutionGasUsage
         .multipliedBy(mixin.applyMixin("finalMultiplier", 1.15)), 18, true)
     }
   }
 
-  public static computePriceImpact(request: ExchangeRequest, amountIn: Amount, amountOut: Amount, priceStorage: PriceStorageExtension) {
+  public static computePriceImpact(request: ExchangeRequest, tokenOut: BasicToken, amountIn: Amount, amountOut: Amount, priceStorage: PriceStorageExtension) {
     const tokenInPrice = priceStorage.getPrice(request.tokenIn.network, request.tokenIn.address)
-    const tokenOutPrice = priceStorage.getPrice(request.tokenOut.network, request.tokenOut.address)
+    const tokenOutPrice = priceStorage.getPrice(tokenOut.network, tokenOut.address)
 
     const tokenInAmountUSD = amountIn.toReadableBigNumber().multipliedBy(tokenInPrice.toReadableBigNumber())
     const tokenOutAmountUSD = amountOut.toReadableBigNumber().multipliedBy(tokenOutPrice.toReadableBigNumber())
@@ -189,7 +193,7 @@ export class ExchangeUtils {
     }
   }
 
-  public static filterRoutesByExpectedOutput(route: SimulatedRoute, priceStorage: PriceStorageExtension, maxDifference = 15, config?: SdkConfig) {
+  public static filterRoutesByExpectedOutput(route: SingleOutputSimulatedRoute, priceStorage: PriceStorageExtension, maxDifference = 15, config?: SdkConfig) {
     const fromTokenPrice = priceStorage.getPrice(route.tokenIn.network, route.tokenIn.address)
     if (fromTokenPrice.lte(0)) config?.debugLogListener?.(`Possible exception with ${ route.tokenIn.network.name } ${ route.tokenIn
       .address.toString().slice(0, 19) }: price lower than or equal to zero`)
@@ -209,14 +213,24 @@ export class ExchangeUtils {
   public static autoUpdateDirection(request: ExchangeRequest): SdkException | ExchangeRequest {
     const _request = { ...request }
 
-    if (!Amount.isAmount(_request.amountIn) && !Amount.isAmount(_request.amountOut))
+    const outNetworksList = request.tokensOut.map(t => t.network.name)
+
+    if (new Set(outNetworksList).size !== 1)
+      return new SdkException("Cannot use more than one output network in split swap mode", SdkExceptionCode.InvalidRequest)
+
+    if (
+      (!Amount.isAmount(_request.amountIn) && _request.amountsOut.length > 1)
+      || (!request.exactInput && _request.amountsOut.length > 1)
+    ) return new SdkException("Cannot execute exactInput swaps in split swap mode", SdkExceptionCode.InvalidRequest)
+
+    if (!Amount.isAmount(_request.amountIn) && !Amount.isAmount(_request.amountsOut[0]))
       return new SdkException("Invalid request", SdkExceptionCode.InvalidRequest)
 
-    if (_request.exactInput && !Amount.isAmount(_request.amountIn)) return ExchangeUtils.updateRequest(_request, {
+    if (_request.exactInput && !Amount.isAmount(_request.amountIn) && _request.amountsOut.length <= 1) return ExchangeUtils.updateRequest(_request, {
       exactInput: false
     })
 
-    if (!_request.exactInput && !Amount.isAmount(_request.amountOut)) return ExchangeUtils.updateRequest(_request, {
+    if (!_request.exactInput && !Amount.isAmount(_request.amountsOut[0])) return ExchangeUtils.updateRequest(_request, {
       exactInput: true
     })
 

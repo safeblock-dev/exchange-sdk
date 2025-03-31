@@ -5,30 +5,76 @@ import { contractAddresses } from "~/config"
 import { PriceStorageExtension } from "~/extensions"
 import { ExchangeUtils } from "~/sdk/exchange-utils"
 import { SdkConfig } from "~/sdk/index"
+import SdkCore from "~/sdk/sdk-core"
 import convertPairsToHex from "~/utils/convert-pairs-to-hex"
-import { ExchangeRequest, RouteStep, SimulatedRoute } from "~/types"
+import { ExchangeRequest, RouteStep, SimulatedRoute, SingleOutputSimulatedRoute } from "~/types"
 import { BasicToken } from "~/types"
 
-export default async function simulateRoutes(request: ExchangeRequest, priceStorage: PriceStorageExtension, routes: RouteStep[][], config?: SdkConfig) {
+interface Options {
+  tokenIn: BasicToken
+  tokenOut: BasicToken
+  amountIn: Amount
+  amountOut: Amount
+  routes: RouteStep[][]
+  exactInput: boolean
+  config: SdkConfig
+
+  sdkInstance: SdkCore
+}
+
+async function simulateSingeOutputRoutes(options: Options): Promise<SingleOutputSimulatedRoute[]> {
+  if (ExchangeUtils.isWrapUnwrap({ tokenIn: options.tokenIn, tokensOut: [options.tokenOut] })) {
+    return [{
+      tokenIn: options.tokenIn,
+      tokenOut: options.tokenOut,
+      originalRoute: [],
+      routeReference: "wrap-unwrap",
+      amountIn: options.exactInput ? options.amountIn : options.amountOut,
+      amountOut: options.exactInput ? options.amountIn : options.amountOut,
+      isExactInput: options.exactInput
+    }]
+  }
+
+  if (options.tokenIn.address.equalTo(options.tokenOut.address) && options.tokenIn.network.name === options.tokenOut.network.name) {
+    return [{
+      tokenIn: options.tokenIn,
+      tokenOut: options.tokenOut,
+      originalRoute: [],
+      routeReference: "transfer",
+      amountIn: options.exactInput ? options.amountIn : options.amountOut,
+      amountOut: options.exactInput ? options.amountIn : options.amountOut,
+      isExactInput: options.exactInput
+    }]
+  }
+
   const getRouteReference = (route: RouteStep[]) => {
     return route.map(r => r.address + r.exchange_id + r.token0.address.toString() + r.token1.address.toString()).join(":")
   }
 
-  const calls: MultiCallRequest[] = routes.map(route => {
+  const tokenInAddress = options.tokenIn.address.equalTo(Address.zeroAddress)
+    ? Address.wrappedOf(options.tokenIn.network)
+    : options.tokenIn.address.toString()
+
+  const tokenOutAddress = options.tokenOut.address.equalTo(Address.zeroAddress)
+    ? Address.wrappedOf(options.tokenOut.network)
+    : options.tokenOut.address.toString()
+
+  const calls: MultiCallRequest[] = options.routes.map(route => {
     const pairs = convertPairsToHex(route)
 
     const _calls: MultiCallRequest["calls"][0][] = []
 
-    if (request.exactInput) {
+    if (options.exactInput) {
       _calls.push({
         method: "multiswap",
         reference: getRouteReference(route),
         methodParameters: [
           {
             minAmountOut: 0,
-            tokenIn: request.tokenIn.address.toString(),
-            pairs,
-            amountIn: request.amountIn.toBigInt()
+            tokenIn: tokenInAddress,
+            pairs: pairs,
+            tokenOut: tokenOutAddress,
+            amountIn: options.amountIn.toBigInt()
           }
         ]
       })
@@ -40,9 +86,9 @@ export default async function simulateRoutes(request: ExchangeRequest, priceStor
         methodParameters: [
           {
             minAmountOut: 0,
-            tokenIn: request.tokenOut.address.toString(),
+            tokenIn: tokenOutAddress,
             pairs,
-            amountIn: request.amountOut.toBigInt()
+            amountIn: options.amountOut.toBigInt()
           }
         ]
       })
@@ -50,41 +96,40 @@ export default async function simulateRoutes(request: ExchangeRequest, priceStor
 
     return {
       contractInterface: MultiSwapRouter__factory,
-      target: Address.from(contractAddresses.quoter(request.tokenIn.network, config)),
+      target: Address.from(contractAddresses.quoter(options.tokenIn.network, options.config)),
       calls: _calls
     }
   })
 
   const simulationResult = await arrayUtils.asyncNonNullable(
     arrayUtils.asyncMap(
-      multicall<[ BigInt ]>(request.tokenIn.network, calls),
+      multicall<[BigInt]>(options.tokenIn.network, calls),
       route => ({ ref: route.reference, amount: BigInt(route.data?.[0].toString() ?? 0) })
     )
   )
 
-
-  const simulatedRoutes: SimulatedRoute[] = []
+  const simulatedRoutes: SingleOutputSimulatedRoute[] = []
 
   simulationResult
     .filter(route => route.amount && route.amount > BigInt(0) && route.amount < MaxUint256)
     .forEach(route => {
       if (!route.amount) return
 
-      const relatedRoute = routes.find(r => getRouteReference(r) === route.ref)
+      const relatedRoute = options.routes.find(r => getRouteReference(r) === route.ref)
 
       if (!relatedRoute) return
 
-      let amountIn = request.amountIn
-      let amountOut = request.amountOut
+      let amountIn = options.amountIn
+      let amountOut = options.amountOut
 
-      if (request.exactInput) {
-        amountOut = new Amount(route.amount, request.tokenOut.decimals, false)
+      if (options.exactInput) {
+        amountOut = new Amount(route.amount, options.tokenOut.decimals, false)
       }
       else {
-        amountIn = new Amount(route.amount, request.tokenIn.decimals, false)
+        amountIn = new Amount(route.amount, options.tokenIn.decimals, false)
       }
 
-      const allTokens = routes.map(route => route.map(r => [r.token1, r.token1])).flat(2)
+      const allTokens = options.routes.map(route => route.map(r => [r.token1, r.token1])).flat(2)
       const uniqueTokens: BasicToken[] = []
 
       allTokens.forEach(token => {
@@ -98,19 +143,76 @@ export default async function simulateRoutes(request: ExchangeRequest, priceStor
         amountIn: amountIn,
         amountOut: amountOut,
         originalRoute: relatedRoute,
-        tokenIn: request.tokenIn,
-        tokenOut: request.tokenOut,
-        isExactInput: request.exactInput,
-        slippageReadablePercent: request.slippageReadablePercent,
-        destinationAddress: Address.from(request.destinationAddress ?? Address.zeroAddress),
-        arrivalGasAmount: request.arrivalGasAmount,
-        priceImpactPercent: ExchangeUtils.computePriceImpact(request, amountIn, amountOut, priceStorage),
-        usedTokensList: uniqueTokens
+        tokenIn: options.tokenIn,
+        tokenOut: options.tokenOut,
+        isExactInput: options.exactInput
       })
     })
 
 
-  if (request.exactInput) return simulatedRoutes.sort((a, b) => a.amountOut.gt(b.amountOut) ? -1 : 1)
+  const sortRoutes = () => {
+    if (options.exactInput) return simulatedRoutes.sort((a, b) => a.amountOut.gt(b.amountOut) ? -1 : 1)
 
-  return simulatedRoutes.sort((a, b) => a.amountIn.lt(b.amountIn) ? -1 : 1)
+    return simulatedRoutes.sort((a, b) => a.amountIn.lt(b.amountIn) ? -1 : 1)
+  }
+
+  return sortRoutes().filter(route => ExchangeUtils
+    .filterRoutesByExpectedOutput(route, options.sdkInstance
+      .extension(PriceStorageExtension), options.config.routePriceDifferenceLimit, options.config))
+}
+
+export default async function simulateRoutes(
+  request: ExchangeRequest,
+  routes: RouteStep[][][],
+  config: SdkConfig,
+  sdkInstance: SdkCore
+): Promise<SimulatedRoute> {
+  config.debugLogListener?.(`Simulate: starting parallel simulation of ${ routes.flat(3).length } routes...`)
+  const at = Date.now()
+
+  const eachTokenRawOutputs = await Promise.all(
+    request.tokensOut.map((tokenOut, index) => (
+      simulateSingeOutputRoutes({
+        config,
+        sdkInstance,
+        routes: routes[index],
+        amountIn: request.amountIn.mul(request.amountOutReadablePercentages[index] / 100),
+        amountOut: request.amountsOut[index],
+        exactInput: request.exactInput,
+        tokenIn: request.tokenIn,
+        tokenOut: tokenOut
+      })
+    ))
+  )
+
+  eachTokenRawOutputs.forEach((tokenOutput, index) => {
+    const addr = request.tokensOut[index].address.toString().slice(0, 10)
+    config.debugLogListener?.(`Simulate for ${ addr }: sorted route outputs: [${ tokenOutput.map(t => t.amountOut.toReadable()).join(",") }]`)
+  })
+
+  config.debugLogListener?.(`Simulate: raw route outputs received in ${ Date.now() - at }ms`)
+
+  const eachTokenOutput = eachTokenRawOutputs.map(rawOutputs => rawOutputs[0])
+
+  return {
+    tokensOut: request.tokensOut,
+    tokenIn: request.tokenIn,
+    amountIn: request.exactInput ? request.amountIn : eachTokenOutput[0].amountIn,
+    amountsOut: eachTokenOutput.map(output => output.amountOut),
+    isExactInput: request.exactInput,
+    routeReference: eachTokenOutput.map(o => o.routeReference).join("+"),
+    amountOutReadablePercentages: request.amountOutReadablePercentages,
+    arrivalGasAmount: request.arrivalGasAmount,
+    destinationAddress: request.destinationAddress,
+    originalRouteSet: eachTokenOutput.map(o => o.originalRoute),
+    slippageReadablePercent: request.slippageReadablePercent,
+    priceImpactPercents: eachTokenOutput.map(o => ExchangeUtils.computePriceImpact(
+      request,
+      o.tokenOut,
+      o.amountIn,
+      o.amountOut,
+      sdkInstance.extension(PriceStorageExtension)
+    )),
+    usedTokensList: eachTokenOutput.map(o => [o.tokenIn, o.tokenOut]).flat()
+  }
 }
