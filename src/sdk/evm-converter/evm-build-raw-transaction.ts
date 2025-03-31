@@ -37,13 +37,13 @@ export default async function evmBuildRawTransaction(from: Address, route: Simul
 
   let transferData: string[] = []
 
-  if (route.tokensOut.some(token => token.address.equalTo(Address.isZero))) {
+  if (route.tokensOut.some(token => token.address.equalTo(Address.zeroAddress))) {
     transferData.push(transferFaucetIface.encodeFunctionData("unwrapNativeAndTransferTo", [
       destinationAddress.toString()
     ]))
   }
 
-  if (route.tokensOut.length > 1 || !route.tokensOut.some(token => token.address.equalTo(Address.isZero))) {
+  if (route.tokensOut.length > 1 || !route.tokensOut.some(token => token.address.equalTo(Address.zeroAddress))) {
     transferData.push(transferFaucetIface.encodeFunctionData("transferToken", [
       destinationAddress.toString(),
       route.tokensOut.filter(t => !t.address.equalTo(Address.zeroAddress))
