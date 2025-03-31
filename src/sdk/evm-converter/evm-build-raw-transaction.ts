@@ -2,6 +2,7 @@ import { Address } from "@safeblock/blockchain-utils"
 import BigNumber from "bignumber.js"
 import { Entrypoint__factory, MultiswapRouterFaucet__factory, TransferFaucet__factory } from "~/abis/types"
 import { SimulatedRoute } from "~/types"
+import adjustPercentages from "~/utils/adjust-percentages"
 import convertPairsToHex from "~/utils/convert-pairs-to-hex"
 
 export default async function evmBuildRawTransaction(from: Address, route: SimulatedRoute) {
@@ -12,9 +13,7 @@ export default async function evmBuildRawTransaction(from: Address, route: Simul
   const multiSwapData = multiSwapIface.encodeFunctionData("multiswap2", [
     {
       fullAmount: route.amountIn.toBigInt(),
-      amountInPercentages: [
-        BigInt(1e18)
-      ],
+      amountInPercentages: adjustPercentages(route.amountOutReadablePercentages),
       minAmountsOut: route.amountsOut.map((amount, index) => {
         if (route.originalRouteSet[index].length === 0) return "0" // Tokens transfer only
 
