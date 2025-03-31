@@ -125,7 +125,7 @@ export default class EvmConverter extends ExchangeConverter {
         isExactInput: request.exactInput,
         priceImpactPercents: [0],
         arrivalGasAmount: undefined,
-        routeReference: "",
+        routeReference: "wrap-unwrap",
         amountOutReadablePercentages: request.amountOutReadablePercentages,
         usedTokensList: [ExchangeUtils.toRouteToken(request.tokenIn), ExchangeUtils.toRouteToken(request.tokensOut[0])],
         originalRouteSet: [[{

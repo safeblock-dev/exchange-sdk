@@ -23,15 +23,24 @@ interface Options {
 }
 
 async function simulateSingeOutputRoutes(options: Options): Promise<SingleOutputSimulatedRoute[]> {
+  if (ExchangeUtils.isWrapUnwrap({ tokenIn: options.tokenIn, tokensOut: [options.tokenOut] })) {
+    return [{
+      tokenIn: options.tokenIn,
+      tokenOut: options.tokenOut,
+      originalRoute: [],
+      routeReference: "wrap-unwrap",
+      amountIn: options.exactInput ? options.amountIn : options.amountOut,
+      amountOut: options.exactInput ? options.amountIn : options.amountOut,
+      isExactInput: options.exactInput
+    }]
+  }
+
   if (options.tokenIn.address.equalTo(options.tokenOut.address) && options.tokenIn.network.name === options.tokenOut.network.name) {
     return [{
       tokenIn: options.tokenIn,
       tokenOut: options.tokenOut,
       originalRoute: [],
-      routeReference: "transfer" + options.tokenIn.address.toString()
-        + options.tokenOut.address.toString()
-        + options.tokenIn.network.name
-        + options.tokenOut.network.name,
+      routeReference: "transfer",
       amountIn: options.exactInput ? options.amountIn : options.amountOut,
       amountOut: options.exactInput ? options.amountIn : options.amountOut,
       isExactInput: options.exactInput

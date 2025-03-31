@@ -2,7 +2,7 @@ import { Amount } from "@safeblock/blockchain-utils"
 import runSingleChainTests from "~/__specs__/utils/run-single-chain-tests"
 import { PriceStorageExtension } from "~/extensions"
 import { SdkException } from "~/index"
-import { bnbDAI, bnbUSDC, bnbUSDT, sdkConfig } from "./utils/sdk-test-config"
+import { bnbBNB, bnbDAI, bnbUSDC, bnbUSDT, bnbWBNB, sdkConfig } from "./utils/sdk-test-config"
 import SafeBlockSDK from "~/sdk"
 import { ExchangeRequest } from "~/types"
 import { describe, expect, it } from "vitest"
@@ -13,11 +13,11 @@ describe("Single chain split swap exchanges", async () => {
   const amountOutInitial = new Amount(1, bnbDAI.decimals, true)
   const request: ExchangeRequest = {
     exactInput: true,
-    amountIn: new Amount(10, bnbUSDT.decimals, true),
+    amountIn: new Amount(1, bnbUSDT.decimals, true),
     amountsOut: [amountOutInitial, amountOutInitial],
     amountOutReadablePercentages: [50, 50],
-    tokenIn: bnbUSDT,
-    tokensOut: [bnbDAI, bnbUSDC],
+    tokenIn: bnbWBNB,
+    tokensOut: [bnbBNB, bnbUSDC],
     slippageReadablePercent: 1
   }
 
