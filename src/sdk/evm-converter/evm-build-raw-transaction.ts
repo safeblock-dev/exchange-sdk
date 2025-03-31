@@ -24,7 +24,9 @@ export default async function evmBuildRawTransaction(from: Address, route: Simul
           .toFixed(0)
       }),
       tokenIn: route.tokenIn.address.toString(),
-      tokensOut: route.tokensOut.map(token => token.address.toString()),
+      tokensOut: route.tokensOut.map(token => token.address.equalTo(Address.zeroAddress)
+        ? Address.wrappedOf(token.network)
+        : token.address.toString()),
       pairs: pairsHex
     }
   ])
