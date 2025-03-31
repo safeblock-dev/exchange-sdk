@@ -360,7 +360,7 @@ export default class EvmCrossChainExtension {
       slippageReadable: request.slippageReadablePercent,
       priceImpact: request.tokensOut.map((tokenOut, index) => (
         ExchangeUtils
-          .computePriceImpact(request, tokenOut, correctedAmountIn, correctedAmountsOut[index], this.parent.sdkInstance.extension(PriceStorageExtension))
+          .computePriceImpact(request, tokenOut, correctedAmountIn.mul(request.amountOutReadablePercentages[index] / 100), correctedAmountsOut[index], this.parent.sdkInstance.extension(PriceStorageExtension))
       ))
     }
 
