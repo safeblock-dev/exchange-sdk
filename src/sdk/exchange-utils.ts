@@ -43,7 +43,7 @@ export class ExchangeUtils {
 
       const callData = lzContract.interface.encodeFunctionData("sendDeposit", [
         stargateNetworksMapping(request.tokensOut[0].network),
-        amount.toBigInt(),
+        amount.toBigNumber().toFixed(0),
         (request.destinationAddress ?? address).toString()
       ])
 
@@ -57,7 +57,7 @@ export class ExchangeUtils {
     }
   }
 
-  public static async computeBridgeQuota(request: ExchangeRequest, address: Address, amountLD: string, destinationChainCallData: string | null, config?: SdkConfig) {
+  public static async computeBridgeQuota(request: ExchangeRequest, address: Address, amountLD: string, destinationRouteSteps: number, destinationChainCallData: string | null, config?: SdkConfig) {
     const bridgeContract = BridgeFaucet__factory.connect(contractAddresses.entryPoint(request.tokenIn.network, config), ethersProvider(request.tokenIn.network))
 
     try {
@@ -67,7 +67,7 @@ export class ExchangeUtils {
         amountLD,
         (request.destinationAddress || address || Address.zeroAddress).toString(),
         destinationChainCallData || toUtf8Bytes(""),
-        destinationChainCallData ? 400_000 : 0
+        destinationChainCallData ? 450_000 + (150_000 * destinationRouteSteps) : 0
       )
     }
     catch (e: any) {
@@ -81,7 +81,7 @@ export class ExchangeUtils {
     let approveWanted: Amount = new Amount(0, token.decimals, false)
     if (!Address.isZero(token.address) && ownerAddress) {
 
-      const allowance = new BigNumber((await tokenContract.allowance(ownerAddress.toString(), contractAddresses.entryPoint(token.network, config), {})).toString())
+      const allowance = new BigNumber((await tokenContract.allowance(ownerAddress.toString(), contractAddresses.entryPoint(token.network, config), {})).toString()).dp(0)
 
       if (allowance.lt(spendAmount.toString())) approveWanted = new Amount(spendAmount.toReadableBigNumber(), token.decimals, true)
     }

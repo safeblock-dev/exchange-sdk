@@ -226,7 +226,8 @@ export default class EvmCrossChainExtension {
     const bridgeQuota = await ExchangeUtils.computeBridgeQuota(
       request,
       from,
-      sourceNetworkSendAmount.toString(),
+      sourceNetworkSendAmount.toBigNumber().toFixed(0),
+      destinationChainRoute?.originalRouteSet.flat(1).length ?? 0,
       destinationNetworkCallData,
       this.sdkConfig
     )
@@ -246,7 +247,7 @@ export default class EvmCrossChainExtension {
     const mixin = this.mixins.getMixinApplicator("internal")
       .getNamespaceApplicator("buildCrossChainTransaction")
 
-    if (arrivalGas) nativeAmount = mixin.applyMixin("nativeAmountFinalized", nativeAmount.plus(arrivalGas.nativeAmount.toString()))
+    if (arrivalGas) nativeAmount = mixin.applyMixin("nativeAmountFinalized", nativeAmount.plus(arrivalGas.nativeAmount.toBigNumber()))
 
     const transferData = transferFaucetIface.encodeFunctionData("transferToken", [
       Address.from(request.destinationAddress || from || Address.zeroAddress).toString(),
@@ -263,7 +264,7 @@ export default class EvmCrossChainExtension {
           destinationNetworkCallData
             ? contractAddresses.entryPoint(request.tokensOut[0].network, this.sdkConfig)
             : (request.destinationAddress || from || Address.zeroAddress).toString(),
-          destinationNetworkCallData ? 400_000 : 0,
+          destinationNetworkCallData ? (450_000 + (150_000 * (destinationChainRoute?.originalRouteSet.flat(1).length ?? 0))) : 0,
           destinationNetworkCallData || toUtf8Bytes("")
         ])
       ))
