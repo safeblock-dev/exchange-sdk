@@ -18,7 +18,8 @@ export default defineConfig({
       // Entry point of your library
       entry: {
         "exchange-sdk": path.resolve(__dirname, "src/index.ts"),
-        "extensions": path.resolve(__dirname, "src/extensions/index.ts")
+        "extensions": path.resolve(__dirname, "src/extensions/index.ts"),
+        "utils": path.resolve(__dirname, "src/utils/index.ts"),
       },
       // Name of the library (for UMD/IIFE builds)
       name: "ExchangeSdk",

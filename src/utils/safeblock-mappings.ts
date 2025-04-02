@@ -1,20 +1,24 @@
 import { arbitrum, avalanche, base, bnb, mainnet, matic, optimism } from "@safeblock/blockchain-utils"
 import { Network } from "ethers"
+import { SdkConfig } from "~/sdk"
 
 const SafeblockNetworksMap: Record<string, Network> = {
-  "NETWORK_BINANCE": bnb,
-  "NETWORK_ETHEREUM": mainnet,
-  "NETWORK_AVALANCHE": avalanche,
-  "NETWORK_ARBITRUM": arbitrum,
-  "NETWORK_POLYGON": matic,
-  "NETWORK_OPTIMISM": optimism,
-  "NETWORK_BASE": base
+  "binance": bnb,
+  "ethereum": mainnet,
+  "avalanche": avalanche,
+  "arbitrum": arbitrum,
+  "polygon": matic,
+  "optimism": optimism,
+  "base": base
 }
 
-export const networkToSafeblockMap = new Map<string, string>()
-export const safeblockToNetworkMap = new Map<string, Network>()
+export function safeblockToNetworkMap(config: SdkConfig): Map<string, Network> {
+  return new Map(Object.entries(config.customNetworkMappings ?? SafeblockNetworksMap))
+}
 
-Object.entries(SafeblockNetworksMap).forEach(([name, network]) => {
-  networkToSafeblockMap.set(network.name, name)
-  safeblockToNetworkMap.set(name, network)
-})
+export function networkToSafeblockMap(config: SdkConfig): Map<string, string> {
+  const _map = config.customNetworkMappings ?? SafeblockNetworksMap
+
+  return new Map(Object.entries(_map).map(([key, value]) => [value.name, key]))
+}
+
