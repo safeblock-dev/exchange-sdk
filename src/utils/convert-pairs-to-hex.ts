@@ -9,7 +9,7 @@ export default function convertPairsToHex(route: RouteStep[]) {
     // const fee = ExchangeConstants.DefaultV2Fee.padStart(6, "0")
 
     const version = exchangeConstants.versionsMap[i.version]
-    const fee = i.version === "PAIR_VERSION_UNISWAP_V2" && !i.fee
+    const fee = i.version === "uniswap_v2" && !i.fee
       ? exchangeConstants.defaultV2Fee.padStart(6, "0")
       : i.fee.toString(16).padStart(6, "0")
 

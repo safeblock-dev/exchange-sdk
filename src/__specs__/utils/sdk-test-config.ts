@@ -96,7 +96,7 @@ const sdkConfig: SdkConfig = {
   routePriceDifferenceLimit: 20,
   //debugLogListener: console.log,
   backend: {
-    url: "https://api.safeblock.com"
+    url: "https://api.safeblock.me"
   },
   extensions: env => [
     new TokensListExtension(env.sdk, env.eventBus, {

@@ -46,8 +46,8 @@ const publicBackendURL = "https://api.safeblock.com"
 
 const exchangeConstants = {
   versionsMap: {
-    "PAIR_VERSION_UNISWAP_V2": "0",
-    "PAIR_VERSION_UNISWAP_V3": "8"
+    "uniswap_v2": "0",
+    "uniswap_v3": "8"
   } as Record<string, string>,
 
   defaultV2Fee: "1e"
