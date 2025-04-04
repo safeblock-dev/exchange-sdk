@@ -1,4 +1,5 @@
 import { Address } from "@safeblock/blockchain-utils"
+import { Network } from "ethers"
 import EvmConverter from "~/sdk/evm-converter"
 import { ExchangeUtils } from "~/sdk/exchange-utils"
 import SafeBlock from "~/sdk/index"
@@ -27,6 +28,8 @@ export type SdkConfig = Partial<{
 
   routesCountLimit: number
   routesCountHardLimit: number
+
+  customNetworkMappings: Record<string, Network>
 
   extensions: <T extends EventBus<any>> (environment: ExtensionInitializeEnvironment<T>) => SdkExtension[]
 

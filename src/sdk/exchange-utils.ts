@@ -126,7 +126,7 @@ export class ExchangeUtils {
     if (routeSet.length === 0) return routeGasUsage
     routeSet.forEach(route => {
       route.map(step => {
-        routeGasUsage = routeGasUsage.plus(step.version === "PAIR_VERSION_UNISWAP_V3" ? uniswapV3StepGasUsage : uniswapV2StepGasUsage)
+        routeGasUsage = routeGasUsage.plus(step.version === "uniswap_v3" ? uniswapV3StepGasUsage : uniswapV2StepGasUsage)
       })
     })
 

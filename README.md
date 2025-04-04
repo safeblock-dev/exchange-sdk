@@ -71,6 +71,9 @@ const sdk = new SafeBlock({
   // extension or experience troubles using SDK
   debugLogListener: console.log,
 
+  // Optional. Replce default api <-> ethers network names map
+  customNetworkMappings: {},
+
   // Soft limit for the number of routes in a batch call,
   // will try to retrieve as many direct routes as possible
   // and 3 more indirect routes

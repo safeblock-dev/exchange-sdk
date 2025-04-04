@@ -8,13 +8,18 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/exchange-sdk.js",
-      "require": "./dist/exchange-sdk.cjs"
+      "import": "./dist/exchange-sdk.mjs",
+      "require": "./dist/exchange-sdk.js"
     },
     "./extensions": {
       "types": "./dist/extensions/index.d.ts",
-      "import": "./dist/extensions.js",
-      "require": "./dist/extensions.cjs"
+      "import": "./dist/extensions.mjs",
+      "require": "./dist/extensions.js"
+    },
+    "./utils": {
+      "types": "./dist/utils/index.d.ts",
+      "import": "./dist/utils.mjs",
+      "require": "./dist/utils.js"
     }
   },
   "scripts": {
@@ -56,7 +61,7 @@
   },
   "homepage": "https://github.com/safeblock-dev/exchange-sdk#readme",
   "dependencies": {
-    "@safeblock/blockchain-utils": "^0.4.1",
+    "@safeblock/blockchain-utils": "^0.4.2",
     "ethers": "^6.13.4"
   }
 }

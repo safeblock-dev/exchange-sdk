@@ -1,4 +1,4 @@
-import { Address, Amount, evmNetworksList } from "@safeblock/blockchain-utils"
+import { Address, Amount, arrayUtils, evmNetworksList } from "@safeblock/blockchain-utils"
 import { Network } from "ethers"
 import { publicBackendURL } from "~/config"
 import SafeBlock, { SdkConfig } from "~/sdk"
@@ -133,7 +133,7 @@ export default class TokensExtension extends SdkExtension {
 
     // Insert network filters, joined with comma if there is some
     if (options.networks && options.networks.length > 0)
-      filters.set("networks", options.networks.map(net => networkToSafeblockMap.get(net.name)).join(","))
+      filters.set("networks", options.networks.map(net => networkToSafeblockMap(this.config).get(net.name)).join(","))
 
     // Default filters
     filters.set("limit", (options.maxTokensPerRequest ?? 10).toString(10))
@@ -146,13 +146,20 @@ export default class TokensExtension extends SdkExtension {
 
     if (!response) return []
 
-    return response.items.map(token => ({
-      name: token.name,
-      network: safeblockToNetworkMap.get(token.network)!,
-      address: Address.from(token.address),
-      icon: token.image_path ? `https://safeblock.sfo3.digitaloceanspaces.com/${ token.image_path }` : "",
-      symbol: token.symbol,
-      decimals: token.decimals
-    })).filter(t => typeof (t.decimals as any) === "number" && t.decimals > 0)
+    return arrayUtils.nonNullable(
+      response.items.map(token => {
+        const network = safeblockToNetworkMap(this.config).get(token.network)
+        if (!network) return null
+
+        return {
+          name: token.name,
+          network,
+          address: Address.from(token.address),
+          icon: token.image_path ? `https://safeblock.sfo3.digitaloceanspaces.com/${ token.image_path }` : "",
+          symbol: token.symbol,
+          decimals: token.decimals
+        }
+      })
+    ).filter(t => typeof (t.decimals as any) === "number" && t.decimals > 0)
   }
 }
