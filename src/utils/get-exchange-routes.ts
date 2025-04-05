@@ -1,8 +1,10 @@
 import { Address, arrayUtils } from "@safeblock/blockchain-utils"
 import { apiNetworkNamesMapping } from "~/config"
 import { BackendResponse, RouteStep } from "~/types"
+import LimitedMap from "~/utils/limited-map"
 import request from "~/utils/request"
 import { BasicToken } from "~/types"
+import IRoutesResponse = BackendResponse.IRoutesResponse
 
 interface Options {
   backendUrl: string
@@ -13,21 +15,35 @@ interface Options {
   headers?: Record<string, string>
 }
 
+const routesCache = new LimitedMap<string, IRoutesResponse>(10_000)
+
 export default async function getExchangeRoutes(options: Options): Promise<RouteStep[][]> {
   const { backendUrl, fromToken, toToken, bannedDexIds, limit, headers } = options
 
-  const rawRoutes = await request<BackendResponse.IRoutesResponse>({
-    base: backendUrl,
-    path: "/routes",
-    headers,
-    query: {
-      from: Address.isZero(fromToken.address) ? Address.wrappedOf(fromToken.network) : fromToken.address.toString(),
-      to: Address.isZero(toToken.address) ? Address.wrappedOf(toToken.network) : toToken.address.toString(),
-      limit: limit ?? 3,
-      network: apiNetworkNamesMapping(fromToken.network),
-      "banned_dex_ids": bannedDexIds?.length ? bannedDexIds.join(",") : null
-    }
-  })
+  const routeKey = options.fromToken.address.toString() + options.toToken.address.toString()
+    + options.fromToken.network.name + options.toToken.network.name
+    + options.limit + options.bannedDexIds?.join(",")
+
+  const cachedRoute = routesCache.get(routeKey)
+
+  let rawRoutes: IRoutesResponse | null
+  if (cachedRoute) rawRoutes = cachedRoute
+  else {
+    rawRoutes = await request<BackendResponse.IRoutesResponse>({
+      base: backendUrl,
+      path: "/routes",
+      headers,
+      query: {
+        from: Address.isZero(fromToken.address) ? Address.wrappedOf(fromToken.network) : fromToken.address.toString(),
+        to: Address.isZero(toToken.address) ? Address.wrappedOf(toToken.network) : toToken.address.toString(),
+        limit: limit ?? 3,
+        network: apiNetworkNamesMapping(fromToken.network),
+        "banned_dex_ids": bannedDexIds?.length ? bannedDexIds.join(",") : null
+      }
+    })
+
+    if (rawRoutes) routesCache.set(routeKey, rawRoutes, 3_600_000)
+  }
 
   if (!rawRoutes) return []
 
