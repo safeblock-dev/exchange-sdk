@@ -167,7 +167,7 @@ export default async function simulateRoutes(
   config: SdkConfig,
   sdkInstance: SdkCore
 ): Promise<SimulatedRoute> {
-  config.debugLogListener?.(`Simulate: starting parallel simulation of ${ routes.flat(3).length } routes...`)
+  config.debugLogListener?.(`Simulate: Starting parallel simulation of ${ routes.flat(3).length } routes for ${ request.tokensOut.length } tokens...`)
   const at = Date.now()
 
   const eachTokenRawOutputs = await Promise.all(

@@ -106,6 +106,8 @@ export default class PriceStorageExtension extends SdkExtension {
         ]
       }))
 
+    if (requests.length === 0) return
+
     let rates = await arrayUtils.asyncNonNullable(
       arrayUtils.asyncMap(
         multicall<[BigInt]>(network, requests),

@@ -1,6 +1,6 @@
 import { Address, Amount } from "@safeblock/blockchain-utils"
 import { PriceStorageExtension } from "~/extensions"
-import { bnbDAI, bnbUSDT, maticUSDC, maticUSDT, sdkConfig } from "./utils/sdk-test-config"
+import { baseUSDC, baseWETH, bnbDAI, bnbUSDT, sdkConfig } from "./utils/sdk-test-config"
 import SafeBlockSDK from "~/sdk"
 import { ExchangeRequest, SimulatedRoute } from "~/types"
 import { describe, it, expect } from "vitest"
@@ -10,10 +10,10 @@ describe("Cross chain exchanges from Ethereum to Ethereum", async () => {
 
   const usdtTokenRequest: ExchangeRequest = {
     exactInput: true,
-    amountIn: new Amount(10, maticUSDC.decimals, true),
+    amountIn: new Amount(10, baseUSDC.decimals, true),
     amountsOut: [new Amount(0, bnbUSDT.decimals, true)],
     amountOutReadablePercentages: [100],
-    tokenIn: maticUSDC,
+    tokenIn: baseUSDC,
     tokensOut: [bnbUSDT],
     slippageReadablePercent: 1
   }
@@ -21,26 +21,24 @@ describe("Cross chain exchanges from Ethereum to Ethereum", async () => {
   const tokenTokenRequest: ExchangeRequest = {
     exactInput: true,
     amountIn: new Amount(10, bnbDAI.decimals, true),
-    amountsOut: [new Amount(0, maticUSDT.decimals, true)],
+    amountsOut: [new Amount(0, baseWETH.decimals, true)],
     amountOutReadablePercentages: [100],
     tokenIn: bnbDAI,
-    tokensOut: [maticUSDT],
+    tokensOut: [baseWETH],
     slippageReadablePercent: 1
   }
 
   const tokenUsdtRequest: ExchangeRequest = {
     exactInput: true,
     amountIn: new Amount(10, bnbDAI.decimals, true),
-    amountsOut: [new Amount(0, maticUSDC.decimals, true)],
+    amountsOut: [new Amount(0, baseUSDC.decimals, true)],
     amountOutReadablePercentages: [100],
     tokenIn: bnbDAI,
-    tokensOut: [maticUSDC],
+    tokensOut: [baseUSDC],
     slippageReadablePercent: 1
   }
 
-  await sdk.extension(PriceStorageExtension).forceRefetch()
-  await new Promise(r => setTimeout(r, 5_000))
-
+  await sdk.extension(PriceStorageExtension).waitInitialFetch()
   const allRoutes = [
     await sdk.findRoute(usdtTokenRequest),
     await sdk.findRoute(tokenTokenRequest),
@@ -52,6 +50,8 @@ describe("Cross chain exchanges from Ethereum to Ethereum", async () => {
   if (allRoutes.some(r => r instanceof Error)) {
     throw new Error("routes must not be an error: " + allRoutes.find(r => r instanceof Error)?.message)
   }
+
+  const quota = await sdk.createQuotaFromRoute(Address.from(Address.zeroAddress), forceNormalRoutes[0])
 
   it("should not return error on correct request", async () => {
     expect(allRoutes.some(r => r instanceof Error)).toBeFalsy()
@@ -77,7 +77,6 @@ describe("Cross chain exchanges from Ethereum to Ethereum", async () => {
   })
 
   it("should build quota", async () => {
-    const quota = await sdk.createQuotaFromRoute(Address.from(Address.zeroAddress), forceNormalRoutes[0])
 
     if (quota instanceof Error) {
       throw new Error("quota must not be an error: " + quota.message)
