@@ -193,6 +193,7 @@ export default async function simulateRoutes(
   config.debugLogListener?.(`Simulate: raw route outputs received in ${ Date.now() - at }ms`)
 
   const eachTokenOutput = eachTokenRawOutputs.map(rawOutputs => rawOutputs[0])
+    .filter(Boolean)
 
   return {
     tokensOut: request.tokensOut,
