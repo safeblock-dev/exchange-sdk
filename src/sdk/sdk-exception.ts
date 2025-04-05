@@ -4,6 +4,7 @@ export enum SdkExceptionCode {
   SameNetwork,
   NoTetherFound,
   RoutesNotFound,
+  SimulationFailed,
   InternalError,
   TransactionPrepareError,
   ExtensionInitError,

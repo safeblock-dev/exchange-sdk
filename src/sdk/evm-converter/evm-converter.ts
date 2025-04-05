@@ -162,7 +162,7 @@ export default class EvmConverter extends ExchangeConverter {
 
     if (routes.length === 0) return new SdkException("Routes not found", SdkExceptionCode.RoutesNotFound)
 
-    const simulatedRoutes = this.mixins.getMixinApplicator("internal")
+    const simulatedRoute = this.mixins.getMixinApplicator("internal")
       .applyMixin("fetchRoute", "receivedFinalizedRoute", await simulateRoutes(
         request,
         routes.slice(0, this.sdkConfig.routesCountHardLimit ?? 30),
@@ -170,11 +170,14 @@ export default class EvmConverter extends ExchangeConverter {
         this.sdkInstance
       ))
 
-    this.sdkConfig.debugLogListener?.(`Fetch: Best route output amounts: ${ simulatedRoutes.amountsOut.map(a => a.toReadable()).join(",") }`)
+    if (simulatedRoute.amountsOut.length !== simulatedRoute.tokensOut.length)
+      return new SdkException("Routes simulation failed", SdkExceptionCode.SimulationFailed)
+
+    this.sdkConfig.debugLogListener?.(`Fetch: Best route output amounts: ${ simulatedRoute.amountsOut.map(a => a.toReadable()).join(",") }`)
 
     if (!this.sdkInstance.verifyTask(taskId)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 
-    return simulatedRoutes
+    return simulatedRoute
   }
 
   public createSingleChainWrapUnwrapTransaction(request: ExchangeRequest): ExchangeQuota | SdkException {
