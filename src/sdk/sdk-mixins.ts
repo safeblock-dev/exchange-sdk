@@ -1,5 +1,6 @@
 import { Address, Amount } from "@safeblock/blockchain-utils"
 import BigNumber from "bignumber.js"
+import SdkException from "~/sdk/sdk-exception"
 import { ExchangeQuota, ExecutorCallData, SimulatedRoute } from "~/types"
 
 type TMixinList = { [key: string]: { [key: string]: { [key: string]: any } } }
@@ -32,7 +33,7 @@ export interface InternalMixinList extends TMixinList {
       routeInitialGasUsage: number
     },
     fetchRoute: {
-      receivedFinalizedRoute: SimulatedRoute
+      receivedFinalizedRoute: SimulatedRoute | SdkException
       wrapUnwrapVirtualRouteBuilt: SimulatedRoute
     },
     createSingleChainTransaction: {
