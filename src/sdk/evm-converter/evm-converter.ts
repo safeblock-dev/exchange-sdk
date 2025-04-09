@@ -170,6 +170,8 @@ export default class EvmConverter extends ExchangeConverter {
         this.sdkInstance
       ))
 
+    if (simulatedRoute instanceof SdkException) return simulatedRoute
+
     if (simulatedRoute.amountsOut.length !== simulatedRoute.tokensOut.length)
       return new SdkException("Routes simulation failed", SdkExceptionCode.SimulationFailed)
 

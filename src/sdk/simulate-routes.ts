@@ -6,9 +6,9 @@ import { PriceStorageExtension } from "~/extensions"
 import { ExchangeUtils } from "~/sdk/exchange-utils"
 import { SdkConfig } from "~/sdk/index"
 import SdkCore from "~/sdk/sdk-core"
+import SdkException, { SdkExceptionCode } from "~/sdk/sdk-exception"
+import { BasicToken, ExchangeRequest, RouteStep, SimulatedRoute, SingleOutputSimulatedRoute } from "~/types"
 import convertPairsToHex from "~/utils/convert-pairs-to-hex"
-import { ExchangeRequest, RouteStep, SimulatedRoute, SingleOutputSimulatedRoute } from "~/types"
-import { BasicToken } from "~/types"
 
 interface Options {
   tokenIn: BasicToken
@@ -149,11 +149,10 @@ async function simulateSingeOutputRoutes(options: Options): Promise<SingleOutput
       })
     })
 
-
   const sortRoutes = () => {
-    if (options.exactInput) return simulatedRoutes.sort((a, b) => a.amountOut.gt(b.amountOut) ? -1 : 1)
+    if (options.exactInput) return [...simulatedRoutes].sort((a, b) => a.amountOut.gt(b.amountOut) ? -1 : 1)
 
-    return simulatedRoutes.sort((a, b) => a.amountIn.lt(b.amountIn) ? -1 : 1)
+    return [...simulatedRoutes].sort((a, b) => a.amountIn.lt(b.amountIn) ? -1 : 1)
   }
 
   return sortRoutes().filter(route => ExchangeUtils
@@ -166,7 +165,7 @@ export default async function simulateRoutes(
   routes: RouteStep[][][],
   config: SdkConfig,
   sdkInstance: SdkCore
-): Promise<SimulatedRoute> {
+): Promise<SimulatedRoute | SdkException> {
   config.debugLogListener?.(`Simulate: Starting parallel simulation of ${ routes.flat(3).length } routes for ${ request.tokensOut.length } tokens...`)
   const at = Date.now()
 
@@ -195,10 +194,13 @@ export default async function simulateRoutes(
   const eachTokenOutput = eachTokenRawOutputs.map(rawOutputs => rawOutputs[0])
     .filter(Boolean)
 
+  const amountIn = request.exactInput ? request.amountIn : eachTokenOutput[0]?.amountIn
+  if (!amountIn) return new SdkException("Invalid routes returned after simulation: no input amount", SdkExceptionCode.RoutesNotFound)
+
   return {
     tokensOut: request.tokensOut,
     tokenIn: request.tokenIn,
-    amountIn: request.exactInput ? request.amountIn : eachTokenOutput[0].amountIn,
+    amountIn: amountIn,
     amountsOut: eachTokenOutput.map(output => output.amountOut),
     isExactInput: request.exactInput,
     routeReference: eachTokenOutput.map(o => o.routeReference).join("+"),

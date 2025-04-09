@@ -77,7 +77,7 @@ export default class EvmCrossChainExtension {
 
       const sourceChainRoutes = await this.parent.fetchRoute(ExchangeUtils.updateRequest(request, {
         tokensOut: [fromNetworkUSDC],
-        amountsOut: [Amount.from(destinationNetworkExpectedReceiveAmountUSDC.toReadable(), fromNetworkUSDC.decimals, true)],
+        amountsOut: [Amount.from(destinationNetworkExpectedReceiveAmountUSDC, fromNetworkUSDC.decimals, true)],
         amountOutReadablePercentages: [100]
       }), taskId)
 
@@ -89,7 +89,10 @@ export default class EvmCrossChainExtension {
 
       this.sdkConfig.debugLogListener?.("RTL: At least one source chain route found")
     }
-    else sourceNetworkSendAmount = Amount.from(destinationNetworkExpectedReceiveAmountUSDC.toReadable(), fromNetworkUSDC.decimals, true)
+    else sourceNetworkSendAmount = Amount.from(destinationNetworkExpectedReceiveAmountUSDC, fromNetworkUSDC.decimals, true)
+
+    if (!destinationChainRoute && sourceNetworkSendAmount) sourceNetworkSendAmount = Amount
+      .from(sourceNetworkSendAmount.toReadableBigNumber().multipliedBy(1.0003).toFixed(), sourceNetworkSendAmount.decimalPlaces, true)
 
     return this.buildCrossChainTransaction(request, taskId, {
       sourceChainRoute,
@@ -141,7 +144,7 @@ export default class EvmCrossChainExtension {
 
       const destinationChainRoutes = await this.parent.fetchRoute(ExchangeUtils.updateRequest(request, {
         tokenIn: toNetworkUSDC,
-        amountIn: Amount.from((sourceChainRoute?.amountsOut[0] ?? request.amountIn).toReadable(), toNetworkUSDC.decimals, true)
+        amountIn: Amount.from(sourceChainRoute?.amountsOut[0] ?? request.amountIn, toNetworkUSDC.decimals, true)
       }), taskId)
 
       if (!this.parent.sdkInstance.verifyTask(taskId)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
@@ -152,6 +155,9 @@ export default class EvmCrossChainExtension {
 
       this.sdkConfig.debugLogListener?.("LTR: At least one destination chain route found")
     }
+
+    if (!destinationChainRoute && sourceNetworkSendAmount) sourceNetworkSendAmount = Amount
+      .from(sourceNetworkSendAmount.toReadableBigNumber().multipliedBy(0.9997).toFixed(), sourceNetworkSendAmount.decimalPlaces, true)
 
     return this.buildCrossChainTransaction(request, taskId, {
       sourceChainRoute,
