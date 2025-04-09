@@ -94,7 +94,7 @@ const maticMATIC = {
 
 const sdkConfig: SdkConfig = {
   routePriceDifferenceLimit: 20,
-  debugLogListener: console.log,
+  //debugLogListener: console.log,
   backend: {
     url: "https://api.safeblock.me"
   },
