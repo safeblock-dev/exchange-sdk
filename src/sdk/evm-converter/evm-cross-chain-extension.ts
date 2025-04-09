@@ -91,6 +91,9 @@ export default class EvmCrossChainExtension {
     }
     else sourceNetworkSendAmount = Amount.from(destinationNetworkExpectedReceiveAmountUSDC, fromNetworkUSDC.decimals, true)
 
+    if (!destinationChainRoute && sourceNetworkSendAmount) sourceNetworkSendAmount = Amount
+      .from(sourceNetworkSendAmount.toReadableBigNumber().multipliedBy(1.0003).toFixed(), sourceNetworkSendAmount.decimalPlaces, true)
+
     return this.buildCrossChainTransaction(request, taskId, {
       sourceChainRoute,
       sourceNetworkSendAmount,
@@ -152,6 +155,9 @@ export default class EvmCrossChainExtension {
 
       this.sdkConfig.debugLogListener?.("LTR: At least one destination chain route found")
     }
+
+    if (!destinationChainRoute && sourceNetworkSendAmount) sourceNetworkSendAmount = Amount
+      .from(sourceNetworkSendAmount.toReadableBigNumber().multipliedBy(0.9997).toFixed(), sourceNetworkSendAmount.decimalPlaces, true)
 
     return this.buildCrossChainTransaction(request, taskId, {
       sourceChainRoute,
