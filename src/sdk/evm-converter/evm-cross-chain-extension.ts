@@ -141,7 +141,7 @@ export default class EvmCrossChainExtension {
 
       const destinationChainRoutes = await this.parent.fetchRoute(ExchangeUtils.updateRequest(request, {
         tokenIn: toNetworkUSDC,
-        amountIn: Amount.from((sourceChainRoute?.amountsOut[0] ?? request.amountIn), toNetworkUSDC.decimals, true)
+        amountIn: Amount.from(sourceChainRoute?.amountsOut[0] ?? request.amountIn, toNetworkUSDC.decimals, true)
       }), taskId)
 
       if (!this.parent.sdkInstance.verifyTask(taskId)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
