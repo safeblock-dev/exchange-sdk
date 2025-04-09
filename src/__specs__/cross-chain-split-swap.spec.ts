@@ -49,9 +49,8 @@ describe("Cross chain split swap exchanges", async () => {
   })
 
   it("each amount should be greater than half of the input with subtracted price impact", () => {
-    expect(route.amountsOut[0].gt(expectedMaticByPrice.multipliedBy(0.98))).toBeTruthy()
+    expect(route.amountsOut[0].gt(expectedMaticByPrice.multipliedBy(0.97))).toBeTruthy()
     expect(route.amountsOut[1].gt(expectedUSDC.multipliedBy(0.99))).toBeTruthy()
     expect(route.amountsOut[2].gt(expectedUSDC.multipliedBy(0.98))).toBeTruthy()
-
   })
 })

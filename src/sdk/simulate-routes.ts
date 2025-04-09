@@ -149,11 +149,10 @@ async function simulateSingeOutputRoutes(options: Options): Promise<SingleOutput
       })
     })
 
-
   const sortRoutes = () => {
-    if (options.exactInput) return simulatedRoutes.sort((a, b) => a.amountOut.gt(b.amountOut) ? -1 : 1)
+    if (options.exactInput) return [...simulatedRoutes].sort((a, b) => a.amountOut.gt(b.amountOut) ? -1 : 1)
 
-    return simulatedRoutes.sort((a, b) => a.amountIn.lt(b.amountIn) ? -1 : 1)
+    return [...simulatedRoutes].sort((a, b) => a.amountIn.lt(b.amountIn) ? -1 : 1)
   }
 
   return sortRoutes().filter(route => ExchangeUtils
