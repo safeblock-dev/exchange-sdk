@@ -117,11 +117,11 @@ export class ExchangeUtils {
     const mixin = mixinBuilder.getMixinApplicator("internal")
       .getNamespaceApplicator("computeOnchainTradeGasUsage")
 
-    const uniswapV3StepGasUsage = mixin.applyMixin("uniswapV3StepGasUsage", 460_000)
-    const uniswapV2StepGasUsage = mixin.applyMixin("uniswapV2StepGasUsage", 360_000)
+    const uniswapV3StepGasUsage = mixin.applyMixin("uniswapV3StepGasUsage", 450_000)
+    const uniswapV2StepGasUsage = mixin.applyMixin("uniswapV2StepGasUsage", 300_000)
     const receiveNativeGasUsage = mixin.applyMixin("receiveNativeGasUsage", 80_000)
 
-    let routeGasUsage = new BigNumber(mixin.applyMixin("routeInitialGasUsage", 80_000))
+    let routeGasUsage = new BigNumber(mixin.applyMixin("routeInitialGasUsage", 100_000))
 
     if (routeSet.length === 0) return routeGasUsage
     routeSet.forEach(route => {
@@ -148,8 +148,8 @@ export class ExchangeUtils {
       }
     }
 
-    const stargateSwapMessageGasUsage = mixin.applyMixin("stargateSwapMessageGasUsage", 660_000)
-    const stargateHollowMessageGasUsage = mixin.applyMixin("stargateHollowMessageGasUsage", 500_000)
+    const stargateSwapMessageGasUsage = mixin.applyMixin("stargateSwapMessageGasUsage", 450_000)
+    const stargateHollowMessageGasUsage = mixin.applyMixin("stargateHollowMessageGasUsage", 300_000)
 
     const receiveNativeAmount = quota.tokensOut.filter(i => i.address.equalTo(Address.zeroAddress)).length
     if (quota.tokenIn.network.name === quota.tokensOut[0].network.name)
@@ -163,9 +163,9 @@ export class ExchangeUtils {
     return {
       [quota.tokenIn.network.name]: Amount.from(sourceChainExecutionGasUsage.plus(stargateGasUsage)
         .plus(quota.executorCallData.length > 0 ? mixin.applyMixin("multiStepExchangeWrapperGasUsage", 45_000) : 0)
-        .multipliedBy(mixin.applyMixin("finalMultiplier", 1.15)), 18, true),
+        .multipliedBy(mixin.applyMixin("finalMultiplier", 1)), 18, true),
       [quota.tokensOut[0].network.name]: Amount.from(destinationChainExecutionGasUsage
-        .multipliedBy(mixin.applyMixin("finalMultiplier", 1.15)), 18, true)
+        .multipliedBy(mixin.applyMixin("finalMultiplier", 1)), 18, true)
     }
   }
 
