@@ -28,7 +28,6 @@ export default class PriceStorageExtension extends SdkExtension {
 
   #updateTimestamp = 0
   #fetchingPrices = false
-  #workerInterval: any
   #currentFetchingTask = Symbol()
   #initialFetchFinished = false
   #forceRefetchTimeout: any
@@ -38,8 +37,7 @@ export default class PriceStorageExtension extends SdkExtension {
       this.eventBus.emitEvent("onPriceStorageInitialLoadFinished")
     })
 
-    this.pricesWorker().finally(() => {
-      this.startPricesUpdater()
+    this.requestPricesUpdate().finally(() => {
       this.#initialFetchFinished = true
     })
   }
@@ -53,7 +51,7 @@ export default class PriceStorageExtension extends SdkExtension {
 
     this._prices = new Map()
 
-    this.pricesWorker = this.pricesWorker.bind(this)
+    this.requestPricesUpdate = this.requestPricesUpdate.bind(this)
     this.forceRefetch = this.forceRefetch.bind(this)
   }
 
@@ -68,16 +66,6 @@ export default class PriceStorageExtension extends SdkExtension {
         clearInterval(interval)
       }, pollingInterval)
     })
-  }
-
-  public startPricesUpdater() {
-    if (this.#workerInterval) clearInterval(this.#workerInterval)
-
-    this.#workerInterval = setInterval(() => this.pricesWorker(), this.config?.updateInterval ?? 6000)
-  }
-
-  public stopPricesUpdater() {
-    if (this.#workerInterval) clearInterval(this.#workerInterval)
   }
 
   private async fetchTokenPrices(network: Network, task: Symbol) {
@@ -156,7 +144,7 @@ export default class PriceStorageExtension extends SdkExtension {
     this._prices.get(network.name)?.set(Address.zeroAddress, nativeRate)
   }
 
-  private async pricesWorker(forceTask?: symbol) {
+  public async requestPricesUpdate(forceTask?: symbol): Promise<void> {
     if (Date.now() - this.#updateTimestamp < (this.config?.updateInterval ?? 6000) || this.#fetchingPrices) return
 
     this.#fetchingPrices = true
@@ -164,7 +152,7 @@ export default class PriceStorageExtension extends SdkExtension {
     const task = forceTask ?? Symbol()
     this.#currentFetchingTask = task
 
-    return Promise.all(this.sdk.extension(TokensListExtension)
+    await Promise.all(this.sdk.extension(TokensListExtension)
       .networks.map(async network => await this.fetchTokenPrices(network, task).catch(() => null)))
       .finally(() => {
         this.#fetchingPrices = false
@@ -182,17 +170,14 @@ export default class PriceStorageExtension extends SdkExtension {
 
         this.eventBus.emitEvent("onPriceStorageForceRefetch")
 
-        if (this.#workerInterval) clearInterval(this.#workerInterval)
-
         const task = Symbol()
         this.#currentFetchingTask = task
 
         try {
-          return await this.pricesWorker(task)
+          return await this.requestPricesUpdate(task)
         }
         finally {
           resolve()
-          this.startPricesUpdater()
         }
       }, this.config?.forceRefetchTimeout ?? 200)
     })
