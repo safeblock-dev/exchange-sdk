@@ -28,7 +28,6 @@ export default class PriceStorageExtension extends SdkExtension {
 
   #updateTimestamp = 0
   #fetchingPrices = false
-  #workerInterval: any
   #currentFetchingTask = Symbol()
   #initialFetchFinished = false
   #forceRefetchTimeout: any
@@ -39,7 +38,6 @@ export default class PriceStorageExtension extends SdkExtension {
     })
 
     this.pricesWorker().finally(() => {
-      this.startPricesUpdater()
       this.#initialFetchFinished = true
     })
   }
@@ -68,16 +66,6 @@ export default class PriceStorageExtension extends SdkExtension {
         clearInterval(interval)
       }, pollingInterval)
     })
-  }
-
-  public startPricesUpdater() {
-    if (this.#workerInterval) clearInterval(this.#workerInterval)
-
-    this.#workerInterval = setInterval(() => this.pricesWorker(), this.config?.updateInterval ?? 6000)
-  }
-
-  public stopPricesUpdater() {
-    if (this.#workerInterval) clearInterval(this.#workerInterval)
   }
 
   private async fetchTokenPrices(network: Network, task: Symbol) {
@@ -182,8 +170,6 @@ export default class PriceStorageExtension extends SdkExtension {
 
         this.eventBus.emitEvent("onPriceStorageForceRefetch")
 
-        if (this.#workerInterval) clearInterval(this.#workerInterval)
-
         const task = Symbol()
         this.#currentFetchingTask = task
 
@@ -192,7 +178,6 @@ export default class PriceStorageExtension extends SdkExtension {
         }
         finally {
           resolve()
-          this.startPricesUpdater()
         }
       }, this.config?.forceRefetchTimeout ?? 200)
     })
