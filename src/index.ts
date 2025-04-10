@@ -1,4 +1,5 @@
 import SafeBlock, { SdkConfig } from "~/sdk"
+import { ExtensionInitializeEnvironment } from "~/sdk/sdk-core"
 import SdkExtension, { PartialEventBus } from "~/sdk/sdk-extension"
 import { SdkMixins } from "~/sdk/sdk-mixins"
 import { ExecutorCallData, ExchangeRequest, ExchangeQuota, SimulatedRoute, BasicToken } from "~/types"
@@ -17,5 +18,6 @@ export {
   type SimulatedRoute,
   type BasicToken,
   type PartialEventBus,
-  type SdkMixins
+  type SdkMixins,
+  type ExtensionInitializeEnvironment
 }

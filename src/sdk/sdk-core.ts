@@ -14,7 +14,7 @@ type TAddressesList = { [p: string]: string } & { default: string }
 
 type InstanceTypeOf<T extends new (...args: any) => any> = T extends new (...args: any) => infer R ? R : never
 
-interface ExtensionInitializeEnvironment<T extends EventBus<any>> {
+export interface ExtensionInitializeEnvironment<T extends EventBus<any>> {
   sdk: SafeBlock
   config: SdkConfig
   eventBus: T
