@@ -1,5 +1,4 @@
 import { Address, arrayUtils } from "@safeblock/blockchain-utils"
-import { apiNetworkNamesMapping } from "~/config"
 import { BackendResponse, RouteStep } from "~/types"
 import LimitedMap from "~/utils/limited-map"
 import request from "~/utils/request"
@@ -37,7 +36,7 @@ export default async function getExchangeRoutes(options: Options): Promise<Route
         from: Address.isZero(fromToken.address) ? Address.wrappedOf(fromToken.network) : fromToken.address.toString(),
         to: Address.isZero(toToken.address) ? Address.wrappedOf(toToken.network) : toToken.address.toString(),
         limit: limit ?? 3,
-        network: apiNetworkNamesMapping(fromToken.network),
+        network: fromToken.network.chainId.toString(),
         "banned_dex_ids": bannedDexIds?.length ? bannedDexIds.join(",") : null
       }
     })

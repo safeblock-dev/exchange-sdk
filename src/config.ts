@@ -1,4 +1,4 @@
-import { arbitrum, avalanche, bnb, mainnet, optimism, matic, base } from "@safeblock/blockchain-utils"
+import { arbitrum, avalanche, bnb, mainnet, optimism, matic, base, scroll, gnosis } from "@safeblock/blockchain-utils"
 import { selectAddress } from "@safeblock/blockchain-utils"
 import { Network } from "ethers"
 import { SdkConfig } from "~/sdk"
@@ -14,6 +14,7 @@ const contractAddresses = {
   }),
 
   offchainOracle: (network: Network) => selectAddress(network, {
+    [scroll.name]: "0xA2a3F952427c22e208a8298fd2346B8e664964b1",
     default: "0x00000000000D6FFc74A8feb35aF5827bf57f6786"
   }),
 
@@ -24,6 +25,8 @@ const contractAddresses = {
     [arbitrum.name]: "0xe8CDF27AcD73a434D661C84887215F7598e7d0d3",
     [optimism.name]: "0xcE8CcA271Ebc0533920C83d39F417ED6A0abB7D0",
     [base.name]: "0x27a16dc786820B16E5c9028b75B99F6f604b5d26",
+    [scroll.name]: "0x3Fc69CC4A842838bCDC9499178740226062b14E4",
+    [gnosis.name]: "0xB1EeAD6959cb5bB9B20417d6689922523B2B86C3",
     default: "0x962Bd449E630b0d928f308Ce63f1A21F02576057"
   }),
 
@@ -34,6 +37,8 @@ const contractAddresses = {
     [arbitrum.name]: { address: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831", decimals: 6 },
     [optimism.name]: { address: "0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85", decimals: 6 },
     [base.name]: { address: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", decimals: 6 },
+    [scroll.name]: { address: "0x06eFdBFf2a14a7c8E15944D1F4A48F9F95F663A4", decimals: 6 },
+    [gnosis.name]: { address: "0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0", decimals: 6 },
     default: { address: "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d", decimals: 18 }
   }),
 
@@ -61,30 +66,17 @@ function stargateNetworksMapping(network: Network) {
     [avalanche.name]: 30106,
     [arbitrum.name]: 30110,
     [optimism.name]: 30111,
-    [base.name]: 30184
+    [base.name]: 30184,
+    [scroll.name]: 30214,
+    [gnosis.name]: 30145,
   }
 
   return map[network.name] ?? -1
-}
-
-function apiNetworkNamesMapping(network: Network) {
-  const map: Record<string, string> = {
-    [mainnet.name]: "NETWORK_ETHEREUM",
-    [bnb.name]: "NETWORK_BINANCE",
-    [matic.name]: "NETWORK_POLYGON",
-    [avalanche.name]: "NETWORK_AVALANCHE",
-    [arbitrum.name]: "NETWORK_ARBITRUM",
-    [optimism.name]: "NETWORK_OPTIMISM",
-    [base.name]: "NETWORK_BASE"
-  }
-
-  return map[network.name] ?? "NETWORK_UNSPECIFIED"
 }
 
 export {
   contractAddresses,
   publicBackendURL,
   exchangeConstants,
-  stargateNetworksMapping,
-  apiNetworkNamesMapping
+  stargateNetworksMapping
 }
