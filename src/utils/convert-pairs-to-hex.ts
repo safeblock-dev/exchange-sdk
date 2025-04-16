@@ -6,16 +6,17 @@ export default function convertPairsToHex(route: RouteStep[]) {
 
   return route.map(i => {
     const address = i.address.toString().slice(2)
-    // const fee = ExchangeConstants.DefaultV2Fee.padStart(6, "0")
 
     const version = exchangeConstants.versionsMap[i.version]
     const fee = i.version === "uniswap_v2" && !i.fee
       ? exchangeConstants.defaultV2Fee.padStart(6, "0")
       : i.fee.toString(16).padStart(6, "0")
 
-    const emptySpaceLength = 64 - (address.length + fee.length + version.length)
+    const emptySpaceLength = 63 - (address.length + fee.length + version.length)
     const emptySpace = new Array(emptySpaceLength).fill("0").join("")
 
-    return `0x${ version }${ emptySpace }${ fee }${ address }`
+    const isSolidly = i.fee_algorithm ? i.fee_algorithm.split("/").slice(-1)[0] === "solidly" ? 1 : 0 : 0
+
+    return `0x${ version }${ emptySpace }${ isSolidly }${ fee }${ address }`
   })
 }

@@ -88,7 +88,7 @@ export default class EvmConverter extends ExchangeConverter {
   }
 
   public async createSingleChainTransaction(from: Address, route: SimulatedRoute, taskId: symbol): Promise<SdkException | ExchangeQuota> {
-    const rawTransaction = await evmBuildRawTransaction(from, route)
+    const rawTransaction = await evmBuildRawTransaction(from, route, this.mixins)
 
     return this.mixins.getMixinApplicator("internal")
       .applyMixin("createSingleChainTransaction", "singleChainQuotaBuilt", await this.rawTransactionToQuota(
@@ -127,14 +127,15 @@ export default class EvmConverter extends ExchangeConverter {
         arrivalGasAmount: undefined,
         routeReference: "wrap-unwrap",
         amountOutReadablePercentages: request.amountOutReadablePercentages,
-        usedTokensList: [ExchangeUtils.toRouteToken(request.tokenIn), ExchangeUtils.toRouteToken(request.tokensOut[0])],
+        usedTokensList: [request.tokenIn, request.tokensOut[0]],
         originalRouteSet: [[{
           exchange_id: ExchangeUtils.ZeroExchangeId,
           fee: 0,
           version: "PAIR_WRAP_UNWRAP",
           address: request.tokenIn.address,
-          token0: ExchangeUtils.toRouteToken(request.tokenIn),
-          token1: ExchangeUtils.toRouteToken(request.tokensOut[0])
+          token0: request.tokenIn,
+          token1: request.tokensOut[0],
+          fee_type: "none"
         }]]
       })
     }

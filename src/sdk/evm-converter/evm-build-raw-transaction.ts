@@ -1,12 +1,15 @@
 import { Address } from "@safeblock/blockchain-utils"
 import BigNumber from "bignumber.js"
 import { Entrypoint__factory, MultiswapRouterFaucet__factory, TransferFaucet__factory } from "~/abis/types"
+import { SdkMixins } from "~/sdk/sdk-mixins"
 import { SimulatedRoute } from "~/types"
 import adjustPercentages from "~/utils/adjust-percentages"
 import convertPairsToHex from "~/utils/convert-pairs-to-hex"
 
-export default async function evmBuildRawTransaction(from: Address, route: SimulatedRoute) {
+export default async function evmBuildRawTransaction(from: Address, route: SimulatedRoute, mixins: SdkMixins) {
   const pairsHex = route.originalRouteSet.map(route => convertPairsToHex(route))
+
+  const applicator = mixins.getMixinApplicator("internal").getNamespaceApplicator("createSingleChainTransaction")
 
   const multiSwapIface = MultiswapRouterFaucet__factory.createInterface()
 
@@ -44,11 +47,13 @@ export default async function evmBuildRawTransaction(from: Address, route: Simul
   }
 
   if (route.tokensOut.length > 1 || !route.tokensOut.some(token => token.address.equalTo(Address.zeroAddress))) {
-    transferData.push(transferFaucetIface.encodeFunctionData("transferToken", [
+    const applicationResult = applicator.applyMixin("tokenTransferCallDataFinalized", transferFaucetIface.encodeFunctionData("transferToken", [
       destinationAddress.toString(),
       route.tokensOut.filter(t => !t.address.equalTo(Address.zeroAddress))
         .map(t => t.address.toString())
     ]))
+
+    transferData.push(await applicationResult)
   }
 
   const entryPointIface = Entrypoint__factory.createInterface()

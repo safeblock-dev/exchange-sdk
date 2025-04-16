@@ -5,16 +5,17 @@ Currently, only the following internal-type mixins are available:
 ## buildCrossChainTransaction
 Mixins that affect the logic for building a cross-chain exchange transaction
 
-| Name                        | Data Type        | Description                                                                        |
-|-----------------------------|------------------|------------------------------------------------------------------------------------|
-| nativeAmountFinalized       | BigNumber        | The amount of the native currency required for the transaction has been determined |
-| transferDataEncoded         | string           | Encoded data has been obtained for calling the transfer method                     |
-| arrivalGasDataEncoded       | string           | Encoded call data for the arrival gas function has been obtained                   |
-| multiCallTransactionRequest | ExecutorCallData | An exchange transaction request has been obtained                                  |
-| approveTransactionRequest   | ExecutorCallData | An approve transaction request has been obtained                                   |
-| outputAmountsCorrected      | [Amount, Amount] | The quota’s output values have been finalized                                      |
-| quotaComputationFinalized   | ExchangeQuota    | The quota processing is complete                                                   |
-| stargateSendV2CallData      | string           | Encoded data has been obtained to send the payload through Stargate                |
+| Name                           | Data Type                   | Description                                                                        |
+|--------------------------------|-----------------------------|------------------------------------------------------------------------------------|
+| nativeAmountFinalized          | BigNumber                   | The amount of the native currency required for the transaction has been determined |
+| transferDataEncoded            | string                      | Encoded data has been obtained for calling the transfer method                     |
+| arrivalGasDataEncoded          | string                      | Encoded call data for the arrival gas function has been obtained                   |
+| multiCallTransactionRequest    | ExecutorCallData            | An exchange transaction request has been obtained                                  |
+| approveTransactionRequest      | ExecutorCallData            | An approve transaction request has been obtained                                   |
+| outputAmountsCorrected         | [Amount, Amount]            | The quota’s output values have been finalized                                      |
+| quotaComputationFinalized      | ExchangeQuota               | The quota processing is complete                                                   |
+| stargateSendV2CallData         | string                      | Encoded data has been obtained to send the payload through Stargate                |
+| tokenTransferCallDataFinalized | Promise\<string\> \| string | Token transfer calldata has been obtained                                          |
 
 ## computeQuotaExecutionGasUsage
 Mixins that affect the logic for calculating the gas required to execute a quota
@@ -49,9 +50,11 @@ Mixins that affect the logic of retrieving and subsequently processing routes
 ## createSingleChainTransaction
 Mixins that affect the process of building an exchange transaction within a single network
 
-| Name                  | Data Type     | Description                                                              |
-|-----------------------|---------------|--------------------------------------------------------------------------|
-| singleChainQuotaBuilt | ExchangeQuota | The construction of the single-network exchange quota has been completed |
+| Name                           | Data Type                   | Description                                                              |
+|--------------------------------|-----------------------------|--------------------------------------------------------------------------|
+| singleChainQuotaBuilt          | ExchangeQuota               | The construction of the single-network exchange quota has been completed |
+| tokenTransferCallDataFinalized | Promise\<string\> \| string | Token transfer calldata has been obtained                                |
+
 
 ## createSingleChainWrapUnwrapTransaction
 Mixins that affect the process of building a wrap or unwrap transaction

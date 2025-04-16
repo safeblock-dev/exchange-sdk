@@ -9,16 +9,6 @@ import request from "~/utils/request"
 import { networkToSafeblockMap, safeblockToNetworkMap } from "~/utils/safeblock-mappings"
 import { BasicToken } from "~/types"
 
-enum SortingOrder {
-  CreatedAtAscending = "created_at.asc",
-  CreatedAtDescending = "created_at.desc",
-  PairsAscending = "num_pairs.asc",
-  PairsDescending = "num_pairs.desc",
-  VerifiedAscending = "is_verified.asc",
-  VerifiedDescending = "is_verified.desc",
-  None = "none",
-}
-
 interface BackendToken {
   address: string
   decimals: number
@@ -30,7 +20,7 @@ interface BackendToken {
 }
 
 interface FetchTokensOptions {
-  sortingOrder?: SortingOrder[]
+  //sortingOrder?: SortingOrder[]
   searchQuery?: string
   networks?: Network[]
   maxTokensPerRequest?: number
@@ -76,8 +66,8 @@ export default class TokensExtension extends SdkExtension {
     return this.fetchTokens({
       searchQuery: query,
       networks: options?.networks ? options?.networks : Array.from(evmNetworksList),
-      maxTokensPerRequest: options?.maxTokensPerRequest ?? 20,
-      sortingOrder: [SortingOrder.VerifiedDescending, SortingOrder.PairsDescending]
+      maxTokensPerRequest: options?.maxTokensPerRequest ?? 20
+      //sortingOrder: [SortingOrder.VerifiedDescending, SortingOrder.PairsDescending]
     }).then(async foundTokens => {
       if (task !== this._currentTask) return null
 
@@ -127,9 +117,9 @@ export default class TokensExtension extends SdkExtension {
       filters.set("search", options.searchQuery.trim())
 
     // Insert order param if not None
-    if (options.sortingOrder && options.sortingOrder.length > 0) {
-      filters.set("order", options.sortingOrder.filter(n => n !== SortingOrder.None).join(","))
-    }
+    //if (options.sortingOrder && options.sortingOrder.length > 0) {
+    //  filters.set("order", options.sortingOrder.filter(n => n !== SortingOrder.None).join(","))
+    //}
 
     // Insert network filters, joined with comma if there is some
     if (options.networks && options.networks.length > 0)
