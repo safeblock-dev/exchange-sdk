@@ -1,7 +1,7 @@
 import { Amount } from "@safeblock/blockchain-utils"
 import runSingleChainTests from "~/__specs__/utils/run-single-chain-tests"
 import { PriceStorageExtension } from "~/extensions"
-import { baseUSDC, baseWETH, bnbDAI, sdkConfig } from "./utils/sdk-test-config"
+import { bnbBNB, bnbUSDC, sdkConfig } from "./utils/sdk-test-config"
 import SafeBlockSDK from "~/sdk"
 import { ExchangeRequest } from "~/types"
 import { describe } from "vitest"
@@ -9,14 +9,14 @@ import { describe } from "vitest"
 describe("Single chain exchanges in BASE network", async () => {
   const sdk = new SafeBlockSDK(sdkConfig)
 
-  const amountOutInitial = new Amount(1, bnbDAI.decimals, true)
+  const amountOutInitial = new Amount(1, bnbBNB.decimals, true)
   const request: ExchangeRequest = {
     exactInput: true,
-    amountIn: new Amount(10, baseUSDC.decimals, true),
+    amountIn: new Amount(10, bnbUSDC.decimals, true),
     amountsOut: [amountOutInitial],
     amountOutReadablePercentages: [100],
-    tokenIn: baseUSDC,
-    tokensOut: [baseWETH],
+    tokenIn: bnbUSDC,
+    tokensOut: [bnbBNB],
     slippageReadablePercent: 1
   }
 
