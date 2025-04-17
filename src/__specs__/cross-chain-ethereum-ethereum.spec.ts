@@ -1,6 +1,6 @@
 import { Address, Amount } from "@safeblock/blockchain-utils"
 import { PriceStorageExtension } from "~/extensions"
-import { baseUSDC, baseWETH, bnbDAI, bnbUSDT, sdkConfig } from "./utils/sdk-test-config"
+import { baseUSDC, bnbDAI, bnbUSDT, mainnetUSDC, mainnetUSDT, sdkConfig } from "./utils/sdk-test-config"
 import SafeBlockSDK from "~/sdk"
 import { ExchangeRequest, SimulatedRoute } from "~/types"
 import { describe, it, expect } from "vitest"
@@ -10,10 +10,10 @@ describe("Cross chain exchanges from Ethereum to Ethereum", async () => {
 
   const usdtTokenRequest: ExchangeRequest = {
     exactInput: true,
-    amountIn: new Amount(10, baseUSDC.decimals, true),
+    amountIn: new Amount(10, mainnetUSDC.decimals, true),
     amountsOut: [new Amount(0, bnbUSDT.decimals, true)],
     amountOutReadablePercentages: [100],
-    tokenIn: baseUSDC,
+    tokenIn: mainnetUSDC,
     tokensOut: [bnbUSDT],
     slippageReadablePercent: 1
   }
@@ -21,10 +21,10 @@ describe("Cross chain exchanges from Ethereum to Ethereum", async () => {
   const tokenTokenRequest: ExchangeRequest = {
     exactInput: true,
     amountIn: new Amount(10, bnbDAI.decimals, true),
-    amountsOut: [new Amount(0, baseWETH.decimals, true)],
+    amountsOut: [new Amount(0, mainnetUSDT.decimals, true)],
     amountOutReadablePercentages: [100],
     tokenIn: bnbDAI,
-    tokensOut: [baseWETH],
+    tokensOut: [mainnetUSDT],
     slippageReadablePercent: 1
   }
 
