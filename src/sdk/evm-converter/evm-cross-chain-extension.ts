@@ -190,7 +190,7 @@ export default class EvmCrossChainExtension {
     const sourceNetworkCallData: string[] = []
 
     if (sourceChainRoute) {
-      const sourceChainSwapData = await evmBuildRawTransaction(from, sourceChainRoute)
+      const sourceChainSwapData = await evmBuildRawTransaction(from, sourceChainRoute, this.mixins)
       const sourceChainSwap = await this.parent.rawTransactionToQuota({
         recalculateApproveData: true,
         rawTransaction: sourceChainSwapData,
@@ -211,7 +211,7 @@ export default class EvmCrossChainExtension {
     }
 
     if (destinationChainRoute) {
-      const destinationChainSwapData = await evmBuildRawTransaction(from, destinationChainRoute)
+      const destinationChainSwapData = await evmBuildRawTransaction(from, destinationChainRoute, this.mixins)
 
       if (!this.parent.sdkInstance.verifyTask(taskId)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 
@@ -255,10 +255,10 @@ export default class EvmCrossChainExtension {
 
     if (arrivalGas) nativeAmount = mixin.applyMixin("nativeAmountFinalized", nativeAmount.plus(arrivalGas.nativeAmount.toBigNumber()))
 
-    const transferData = transferFaucetIface.encodeFunctionData("transferToken", [
+    const transferData = await mixin.applyMixin("tokenTransferCallDataFinalized", transferFaucetIface.encodeFunctionData("transferToken", [
       Address.from(request.destinationAddress || from || Address.zeroAddress).toString(),
       sourceChainRoute ? sourceChainRoute.tokensOut.map(t => t.address.toString()) : [fromNetworkUSDC.address.toString()]
-    ])
+    ]))
 
     sourceNetworkCallData.push(
       mixin.applyMixin("stargateSendV2CallData", (

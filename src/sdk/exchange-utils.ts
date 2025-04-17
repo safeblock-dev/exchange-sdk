@@ -17,10 +17,6 @@ interface BasicRequest {
 export class ExchangeUtils {
   public static ZeroExchangeId = "00000000-0000-0000-0000-000000000000"
 
-  public static toRouteToken(token: BasicToken): BasicToken & { fee: number } {
-    return { fee: 0, ...token }
-  }
-
   public static async computeArrivalGasData(request: ExchangeRequest, address: Address, config?: SdkConfig) {
     try {
       if (!request.arrivalGasAmount || request.arrivalGasAmount.toReadableBigNumber().lte(0)) return null

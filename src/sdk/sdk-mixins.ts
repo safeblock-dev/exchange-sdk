@@ -14,7 +14,8 @@ export interface InternalMixinList extends TMixinList {
       multiCallTransactionRequest: ExecutorCallData
       approveTransactionRequest: ExecutorCallData
       outputAmountsCorrected: [Amount, Amount[]]
-      quotaComputationFinalized: ExchangeQuota
+      quotaComputationFinalized: ExchangeQuota,
+      tokenTransferCallDataFinalized: Promise<string> | string
       stargateSendV2CallData: string
       callOffset: string
     },
@@ -38,6 +39,7 @@ export interface InternalMixinList extends TMixinList {
     },
     createSingleChainTransaction: {
       singleChainQuotaBuilt: ExchangeQuota
+      tokenTransferCallDataFinalized: Promise<string> | string
     },
     createSingleChainWrapUnwrapTransaction: {
       quotaBuilt: ExchangeQuota

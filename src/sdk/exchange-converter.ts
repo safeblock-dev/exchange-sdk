@@ -42,15 +42,10 @@ export default abstract class ExchangeConverter {
         exchange_id: "MockBridgeId",
         address: Address.from(Address.zeroAddress),
         fee: 0,
+        fee_type: "none",
         version: "V0",
-        token0: {
-          ...request.tokenIn,
-          fee: 0
-        },
-        token1: {
-          ...request.tokensOut[0],
-          fee: 0
-        }
+        token0: request.tokenIn,
+        token1: request.tokensOut[0],
       }]],
       amountIn,
       amountsOut,

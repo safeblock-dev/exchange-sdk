@@ -7,11 +7,11 @@ export namespace BackendResponse {
     exchange_id: string
     fee: number
 
-    token0_fee: number
-    token1_fee: number
-
     token0_id: string
     token1_id: string
+
+    fee_type: "algorithm" | "constant" | "none"
+    fee_algorithm?: string
 
     version: string
   }
@@ -37,9 +37,9 @@ export interface BasicToken {
   network: Network
 }
 
-export interface RouteStep extends Omit<BackendResponse.IBackendRouteStep, "token0_id" | "token1_id" | "token0_fee" | "token1_fee"> {
-  token0: BasicToken & { fee: number }
-  token1: BasicToken & { fee: number }
+export interface RouteStep extends Omit<BackendResponse.IBackendRouteStep, "token0_id" | "token1_id"> {
+  token0: BasicToken
+  token1: BasicToken
 }
 
 export interface SingleOutputSimulatedRoute {

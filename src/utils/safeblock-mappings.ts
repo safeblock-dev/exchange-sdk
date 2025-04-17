@@ -1,4 +1,4 @@
-import { arbitrum, avalanche, base, bnb, mainnet, matic, optimism } from "@safeblock/blockchain-utils"
+import { arbitrum, avalanche, base, bnb, gnosis, mainnet, matic, optimism, scroll } from "@safeblock/blockchain-utils"
 import { Network } from "ethers"
 import { SdkConfig } from "~/sdk"
 
@@ -9,7 +9,9 @@ const SafeblockNetworksMap: Record<string, Network> = {
   "arbitrum": arbitrum,
   "polygon": matic,
   "optimism": optimism,
-  "base": base
+  "base": base,
+  "gnosis": gnosis,
+  "scroll": scroll
 }
 
 export function safeblockToNetworkMap(config: SdkConfig): Map<string, Network> {
