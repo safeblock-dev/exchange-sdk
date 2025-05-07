@@ -21,7 +21,8 @@ describe("Single chain exchanges in Ethereum networks", async () => {
     slippageReadablePercent: 1
   }
 
-  await sdk.extension(PriceStorageExtension).waitInitialFetch()
+  await sdk.extension(PriceStorageExtension).forceRefetch()
+  await sdk.extension(PriceStorageExtension).waitInitialFetch(1000)
 
   const routes = await sdk.findRoute(request)
 
