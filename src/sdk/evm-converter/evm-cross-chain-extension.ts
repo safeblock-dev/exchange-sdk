@@ -387,7 +387,7 @@ export default class EvmCrossChainExtension {
     const fromNetworkUSDC = contractAddresses.usdcParams(request.tokenIn.network)
     const toNetworkUSDC = contractAddresses.usdcParams(request.tokensOut[0].network)
 
-    if (!fromNetworkUSDC || !toNetworkUSDC) return new SdkException("No USDC found on source or destination network", SdkExceptionCode.NoTetherFound)
+    if (!fromNetworkUSDC || !toNetworkUSDC) return new SdkException("No USDC found on source or destination network", SdkExceptionCode.NoBaseTokenFound)
 
     return {
       fromNetworkUSDC: { ...fromNetworkUSDC, address: Address.from(fromNetworkUSDC.address), network: request.tokenIn.network },
