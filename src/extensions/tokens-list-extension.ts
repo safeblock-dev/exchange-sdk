@@ -27,7 +27,7 @@ export default class TokensListExtension extends SdkExtension {
   private readonly _tokensList: Map<string, BasicToken[]> = new Map()
 
   public onInitialize(): void {
-    this.sdk.withExtension(PriceStorageExtension, () => this._tokensList.entries().forEach(([networkName, list]) => {
+    this._tokensList.entries().forEach(([networkName, list]) => {
       const network = Array.from(evmNetworksList).find(n => n.name === networkName)
       if (!network) return
 
@@ -42,7 +42,7 @@ export default class TokensListExtension extends SdkExtension {
           network
         }
       ])
-    }))
+    })
   }
 
 
