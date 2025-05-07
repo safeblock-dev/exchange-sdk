@@ -1,7 +1,7 @@
 import { Address, Amount, base } from "@safeblock/blockchain-utils"
 import runSingleChainTests from "~/__specs__/utils/run-single-chain-tests"
 import { contractAddresses } from "~/config"
-import { TokensListExtension } from "~/extensions"
+import { PriceStorageExtension, TokensListExtension } from "~/extensions"
 import { baseUSDC, baseWETH, sdkConfig, tokensListExtensionConfig } from "./utils/sdk-test-config"
 import SafeBlockSDK from "~/sdk"
 import { ExchangeRequest } from "~/types"
@@ -33,6 +33,8 @@ describe("Single chain exchanges in BASE network", async () => {
     expect(isUSDCExist).toBeTruthy()
   })
 
+  await sdk.extension(PriceStorageExtension).forceRefetch()
+  await sdk.extension(PriceStorageExtension).waitInitialFetch(1000)
   const routes = await sdk.findRoute(request)
 
   if (routes instanceof Error) {
