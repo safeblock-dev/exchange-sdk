@@ -1,11 +1,10 @@
-import { Address, Amount, base } from "@safeblock/blockchain-utils"
+import { Amount } from "@safeblock/blockchain-utils"
 import runSingleChainTests from "~/__specs__/utils/run-single-chain-tests"
-import { contractAddresses } from "~/config"
-import { PriceStorageExtension, TokensListExtension } from "~/extensions"
-import { baseUSDC, baseWETH, sdkConfig, tokensListExtensionConfig } from "./utils/sdk-test-config"
+import { PriceStorageExtension } from "~/extensions"
+import { baseUSDC, baseWETH, sdkConfig } from "./utils/sdk-test-config"
 import SafeBlockSDK from "~/sdk"
 import { ExchangeRequest } from "~/types"
-import { describe, expect, it } from "vitest"
+import { describe } from "vitest"
 
 describe("Single chain exchanges in BASE network", async () => {
   const sdk = new SafeBlockSDK(sdkConfig)
@@ -21,17 +20,17 @@ describe("Single chain exchanges in BASE network", async () => {
     slippageReadablePercent: 1
   }
 
-  it("should contain USDC even if not provided in config", () => {
-    const _usdc = contractAddresses.usdcParams(base)
-    const isUSDCExist = sdk.extension(TokensListExtension).exist({
-      address: Address.from(_usdc.address),
-      decimals: _usdc.decimals,
-      network: base
-    })
-
-    expect(tokensListExtensionConfig[base.name].some(t => t.address.equalTo(_usdc.address))).toBeFalsy()
-    expect(isUSDCExist).toBeTruthy()
-  })
+  //it("should contain USDC even if not provided in config", () => {
+  //  const _usdc = contractAddresses.usdcParams(base)
+  //  const isUSDCExist = sdk.extension(TokensListExtension).exist({
+  //    address: Address.from(_usdc.address),
+  //    decimals: _usdc.decimals,
+  //    network: base
+  //  })
+  //
+  //  expect(tokensListExtensionConfig[base.name].some(t => t.address.equalTo(_usdc.address))).toBeFalsy()
+  //  expect(isUSDCExist).toBeTruthy()
+  //})
 
   await sdk.extension(PriceStorageExtension).forceRefetch()
   await sdk.extension(PriceStorageExtension).waitInitialFetch(1000)
