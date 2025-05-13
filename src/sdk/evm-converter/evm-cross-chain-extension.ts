@@ -308,7 +308,7 @@ export default class EvmCrossChainExtension {
     }
 
     this.sdkConfig.debugLogListener?.(`Build: Approve reset requested: ${ resetRequired ? "yes" : "no" }`)
-    if (resetRequired) {
+    if (resetRequired && approveWanted) {
       executorCallData.push(mixin.applyMixin("resetApproveTransactionRequest", {
         callData: fromTokenContract.interface.encodeFunctionData("approve", [
           contractAddresses.entryPoint(request.tokenIn.network, this.sdkConfig), 0

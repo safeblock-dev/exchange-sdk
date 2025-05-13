@@ -48,7 +48,7 @@ export default class EvmConverter extends ExchangeConverter {
       }
 
       this.sdkConfig.debugLogListener?.(`Build: Approve reset requested: ${ resetRequired ? "yes" : "no" }`)
-      if (resetRequired) callData.push({
+      if (resetRequired && approveWanted) callData.push({
         callData: fromTokenContract.interface.encodeFunctionData("approve", [
           contractAddresses.entryPoint(options.route.tokenIn.network, this.sdkConfig), 0
         ]),
