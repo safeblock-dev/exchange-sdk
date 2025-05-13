@@ -289,7 +289,8 @@ export default class EvmCrossChainExtension {
 
     const {
       tokenContract: fromTokenContract,
-      approveWanted
+      approveWanted,
+      resetRequired
     } = await ExchangeUtils.getTokenTransferDetails(
       request.tokenIn,
       from || Address.from(Address.zeroAddress),
@@ -299,6 +300,23 @@ export default class EvmCrossChainExtension {
 
     if (!this.parent.sdkInstance.verifyTask(taskId)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 
+    const basicTransactionDetails = {
+      gasLimitMultiplier: 1,
+      value: new Amount(0, 18, false),
+      to: request.tokenIn.address,
+      network: request.tokenIn.network
+    }
+
+    this.sdkConfig.debugLogListener?.(`Build: Approve reset requested: ${ resetRequired ? "yes" : "no" }`)
+    if (resetRequired) {
+      executorCallData.push(mixin.applyMixin("resetApproveTransactionRequest", {
+        callData: fromTokenContract.interface.encodeFunctionData("approve", [
+          contractAddresses.entryPoint(request.tokenIn.network, this.sdkConfig), 0
+        ]),
+        ...basicTransactionDetails
+      }))
+    }
+
     this.sdkConfig.debugLogListener?.(`Build: Approve verification: ${ approveWanted ? "wanted" : "approved" }`)
     if (approveWanted) {
       executorCallData.push(mixin.applyMixin("approveTransactionRequest", {
@@ -306,10 +324,7 @@ export default class EvmCrossChainExtension {
           contractAddresses.entryPoint(request.tokenIn.network, this.sdkConfig),
           request.amountIn.toBigInt()
         ]),
-        gasLimitMultiplier: 1,
-        value: new Amount(0, 18, false),
-        to: request.tokenIn.address,
-        network: request.tokenIn.network
+        ...basicTransactionDetails
       }))
     }
 
