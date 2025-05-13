@@ -97,7 +97,7 @@ const tokensListExtensionConfig: Record<string, BasicToken[]> = {
   [bnb.name]: [bnbUSDT, bnbDAI, bnbDOGE, bnbUSDC, bnbWBNB, bnbBNB],
   [matic.name]: [maticUSDC, maticUSDT, maticMATIC, maticWMATIC],
   [mainnet.name]: [mainnetUSDT, mainnetETH, mainnetUSDC],
-  [base.name]: [baseWETH]
+  [base.name]: [baseWETH, baseUSDC]
 }
 
 const sdkConfig: SdkConfig = {
