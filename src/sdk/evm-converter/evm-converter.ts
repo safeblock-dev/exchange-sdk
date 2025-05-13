@@ -36,13 +36,31 @@ export default class EvmConverter extends ExchangeConverter {
       const {
         tokenContract: fromTokenContract,
         approveWanted,
-        approveAmount
+        approveAmount,
+        resetRequired
       } = await ExchangeUtils.getTokenTransferDetails(options.route.tokenIn, options.from, options.route.amountIn, this.sdkConfig)
 
-      if (approveWanted) approveCallData = fromTokenContract.interface.encodeFunctionData("approve", [
-        contractAddresses.entryPoint(options.route.tokenIn.network, this.sdkConfig),
-        approveAmount.toBigInt()
-      ])
+      const basicTransactionDetails = {
+        gasLimitMultiplier: 1,
+        value: new Amount(0, 18, false),
+        to: options.route.tokenIn.address,
+        network: options.route.tokenIn.network
+      }
+
+      if (resetRequired) callData.push({
+        callData: fromTokenContract.interface.encodeFunctionData("approve", [
+          contractAddresses.entryPoint(options.route.tokenIn.network, this.sdkConfig), 0
+        ]),
+        ...basicTransactionDetails
+      })
+
+      if (approveWanted) callData.push({
+        callData: fromTokenContract.interface.encodeFunctionData("approve", [
+          contractAddresses.entryPoint(options.route.tokenIn.network, this.sdkConfig),
+          approveAmount.toBigInt()
+        ]),
+        ...basicTransactionDetails
+      })
     }
 
     if (approveCallData) {

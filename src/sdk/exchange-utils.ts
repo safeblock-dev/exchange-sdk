@@ -76,16 +76,26 @@ export class ExchangeUtils {
 
     let approveWanted: Amount = new Amount(0, token.decimals, false)
     if (!Address.isZero(token.address) && ownerAddress) {
-
       const allowance = new BigNumber((await tokenContract.allowance(ownerAddress.toString(), contractAddresses.entryPoint(token.network, config), {})).toString()).dp(0)
 
       if (allowance.lt(spendAmount.toString())) approveWanted = new Amount(spendAmount.toReadableBigNumber(), token.decimals, true)
     }
 
+    const tokenIface = Token__factory.createInterface()
+    const _approve = tokenIface.encodeFunctionData("approve", [
+      contractAddresses.entryPoint(token.network, config),
+      spendAmount.toBigNumber().toFixed(0)
+    ])
+
+    const resetRequired = (await ethersProvider(token.network)
+      ?.estimateGas({ from: ownerAddress.toString(), to: token.address.toString(), data: _approve })
+      .catch(() => null) ?? null) === null
+
     return {
       tokenContract,
       approveWanted: approveWanted.toReadableBigNumber().gt(0),
-      approveAmount: approveWanted
+      approveAmount: approveWanted,
+      resetRequired
     }
   }
 

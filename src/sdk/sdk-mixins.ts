@@ -14,6 +14,7 @@ export interface InternalMixinList extends TMixinList {
       arrivalGasDataEncoded: string
       multiCallTransactionRequest: ExecutorCallData
       approveTransactionRequest: ExecutorCallData
+      resetApproveTransactionRequest: ExecutorCallData
       outputAmountsCorrected: [Amount, Amount[]]
       quotaComputationFinalized: ExchangeQuota,
       tokenTransferCallDataFinalized: Promise<string> | string
