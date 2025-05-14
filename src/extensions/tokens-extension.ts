@@ -20,7 +20,6 @@ interface BackendToken {
 }
 
 interface FetchTokensOptions {
-  //sortingOrder?: SortingOrder[]
   searchQuery?: string
   networks?: Network[]
   maxTokensPerRequest?: number
@@ -31,6 +30,13 @@ interface FindTokensOptions {
   maxTokensPerRequest?: number
 }
 
+/**
+ * SDK extension that provides token search, import, and balance‑retrieval
+ * via the SafeBlock API.
+ *
+ * Requires the following extension:
+ * - `TokensListExtension`
+ */
 export default class TokensExtension extends SdkExtension {
   static override name = "TokensExtension"
 
@@ -40,6 +46,16 @@ export default class TokensExtension extends SdkExtension {
 
   private _currentTask: string
 
+  /**
+   * SDK extension that provides token search, import, and balance‑retrieval
+   * via the SafeBlock API.
+   *
+   * Requires the following extension:
+   * - `TokensListExtension`
+   *
+   * @param {SafeBlock}                        sdk      SDK instance
+   * @param {SdkConfig}                        config   SDK configuration
+   */
   constructor(private readonly sdk: SafeBlock, private readonly config: SdkConfig) {
     super()
 
@@ -48,17 +64,32 @@ export default class TokensExtension extends SdkExtension {
 
   public onInitialize(): void {}
 
+  /** Reset the current task and clear the balance store */
   public reset() {
     this._fetchedBalances.clear()
     this._currentTask = Math.random().toFixed()
   }
 
+  /**
+   * Get the balance of a specific token.
+   *
+   * @param {Address}   of    account address
+   * @param {BasicToken} token token to query
+   * @returns {Amount} token balance
+   */
   public balanceOf(of: Address, token: BasicToken): Amount {
     return this._fetchedBalances
         .get(of.toString())?.find(b => b.address.equalTo(token.address) && b.network === token.network.name)?.balance
       ?? Amount.from(0, 18, true)
   }
 
+  /**
+   * Search for external tokens using the SafeBlock API.
+   *
+   * @param {string}            query   symbol, address, or name
+   * @param {FindTokensOptions} options search options
+   * @returns {Promise<BasicToken[] | null>} found tokens or `null` on error
+   */
   public async findTokens(query: string, options?: FindTokensOptions): Promise<BasicToken[] | null> {
     const task = Math.random().toFixed()
     this._currentTask = task
@@ -67,7 +98,6 @@ export default class TokensExtension extends SdkExtension {
       searchQuery: query,
       networks: options?.networks ? options?.networks : Array.from(evmNetworksList),
       maxTokensPerRequest: options?.maxTokensPerRequest ?? 20
-      //sortingOrder: [SortingOrder.VerifiedDescending, SortingOrder.PairsDescending]
     }).then(async foundTokens => {
       if (task !== this._currentTask) return null
 
@@ -75,6 +105,12 @@ export default class TokensExtension extends SdkExtension {
     }).catch(() => null)
   }
 
+  /**
+   * Update balances of all registered tokens for a given account.
+   *
+   * @param {Address} of account to update
+   * @returns {Promise<void>}
+   */
   public async fetchBalances(of: Address): Promise<void> {
     const tokensListExtension = this.sdk.extension(TokensListExtension)
 
@@ -100,6 +136,12 @@ export default class TokensExtension extends SdkExtension {
     this._fetchedBalances.set(of.toString(), balanceRef.slice(0, 5000))
   }
 
+  /**
+   * Shortcut that scopes `balanceOf` and `fetchBalances`
+   * to operate on a specific account.
+   *
+   * @param {Address} of account address
+   */
   public as(of: Address) {
     const parent = this
 
@@ -115,11 +157,6 @@ export default class TokensExtension extends SdkExtension {
     // Insert text query search if possible
     if (options.searchQuery && options.searchQuery.trim().length > 0)
       filters.set("search", options.searchQuery.trim())
-
-    // Insert order param if not None
-    //if (options.sortingOrder && options.sortingOrder.length > 0) {
-    //  filters.set("order", options.sortingOrder.filter(n => n !== SortingOrder.None).join(","))
-    //}
 
     // Insert network filters, joined with comma if there is some
     if (options.networks && options.networks.length > 0)

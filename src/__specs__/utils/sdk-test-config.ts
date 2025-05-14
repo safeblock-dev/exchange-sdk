@@ -1,6 +1,7 @@
 import { Address, base, bnb, mainnet, matic } from "@safeblock/blockchain-utils"
 import { TokensListExtension, PriceStorageExtension } from "~/extensions"
 import { SdkConfig } from "~/sdk"
+import { BasicToken } from "~/types"
 
 const bnbDAI = { // DAI
   address: Address.from("0x1AF3F329e8BE154074D8769D1FFa4eE058B1DBc3"),
@@ -92,19 +93,21 @@ const maticMATIC = {
   network: matic
 }
 
+const tokensListExtensionConfig: Record<string, BasicToken[]> = {
+  [bnb.name]: [bnbUSDT, bnbDAI, bnbDOGE, bnbUSDC, bnbWBNB, bnbBNB],
+  [matic.name]: [maticUSDC, maticUSDT, maticMATIC, maticWMATIC],
+  [mainnet.name]: [mainnetUSDT, mainnetETH, mainnetUSDC],
+  [base.name]: [baseWETH, baseUSDC]
+}
+
 const sdkConfig: SdkConfig = {
   routePriceDifferenceLimit: 20,
-  //debugLogListener: console.log,
+  debugLogListener: console.log,
   backend: {
     url: "https://api.safeblock.com"
   },
   extensions: env => [
-    new TokensListExtension(env.sdk, env.eventBus, {
-      [bnb.name]: [bnbUSDT, bnbDAI, bnbDOGE, bnbUSDC, bnbWBNB, bnbBNB],
-      [matic.name]: [maticUSDC, maticUSDT, maticMATIC, maticWMATIC],
-      [mainnet.name]: [mainnetUSDT, mainnetETH, mainnetUSDC],
-      [base.name]: [baseUSDC, baseWETH]
-    }),
+    new TokensListExtension(env.sdk, env.eventBus, tokensListExtensionConfig),
     new PriceStorageExtension(env.sdk, env.eventBus, {
       updateInterval: 10_000
     })
@@ -127,5 +130,7 @@ export {
   baseWETH,
   maticWMATIC,
   baseUSDC,
-  sdkConfig
+
+  sdkConfig,
+  tokensListExtensionConfig
 }

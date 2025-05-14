@@ -38,7 +38,9 @@ describe("Cross chain exchanges from Ethereum to Ethereum", async () => {
     slippageReadablePercent: 1
   }
 
-  await sdk.extension(PriceStorageExtension).waitInitialFetch()
+  await sdk.extension(PriceStorageExtension).forceRefetch()
+  await sdk.extension(PriceStorageExtension).waitInitialFetch(1000)
+
   const allRoutes = [
     await sdk.findRoute(usdtTokenRequest),
     await sdk.findRoute(tokenTokenRequest),

@@ -14,10 +14,12 @@ const SafeblockNetworksMap: Record<string, Network> = {
   "scroll": scroll
 }
 
+/** Function for converting internal `SafeBlock` network names to `ethers`-compatible names */
 export function safeblockToNetworkMap(config: SdkConfig): Map<string, Network> {
   return new Map(Object.entries(config.customNetworkMappings ?? SafeblockNetworksMap))
 }
 
+/** Function to convert `ethers`-compatible names to internal names of `SafeBlock` networks */
 export function networkToSafeblockMap(config: SdkConfig): Map<string, string> {
   const _map = config.customNetworkMappings ?? SafeblockNetworksMap
 

@@ -9,16 +9,31 @@ import { BasicToken } from "~/types"
 
 
 const events = {
+  /** Fired after the first successful price update */
   onPriceStorageInitialLoadFinished: () => null,
+
+  /** Fired after each subsequent price update */
   onPriceStoragePricesUpdated: () => null,
+
+  /** Fired when `forceRefetch` is invoked */
   onPriceStorageForceRefetch: () => null
 }
 
+
 interface IPriceStorageExtensionConfig {
+  /** Automatic price‑update interval in ms */
   updateInterval?: number
+  /** Minimum ms that must elapse between `forceRefetch` calls */
   forceRefetchTimeout?: number
 }
 
+
+/**
+ * SDK extension that manages prices of registered tokens.
+ *
+ * Requires the following extension:
+ * - `TokensListExtension`
+ */
 export default class PriceStorageExtension extends SdkExtension {
   static override name = "PriceStorageExtension"
 
@@ -42,6 +57,16 @@ export default class PriceStorageExtension extends SdkExtension {
     })
   }
 
+  /**
+   * SDK extension that manages prices of registered tokens.
+   *
+   * Requires the following extension:
+   * - `TokensListExtension`
+   *
+   * @param {SafeBlock}                      sdk     SDK instance
+   * @param {PartialEventBus<typeof events>} eventBus partial event bus
+   * @param {IPriceStorageExtensionConfig}   config  extension configuration
+   */
   constructor(
     private readonly sdk: SafeBlock,
     private readonly eventBus: PartialEventBus<typeof events>,
@@ -55,7 +80,14 @@ export default class PriceStorageExtension extends SdkExtension {
     this.forceRefetch = this.forceRefetch.bind(this)
   }
 
-  public async waitInitialFetch(pollingInterval = 100) {
+  /**
+   * Wait until the initial price update is complete. If prices were already
+   * updated at least once, the promise resolves immediately.
+   *
+   * @param {number} pollingInterval polling interval in ms
+   * @returns {Promise<void>} resolves after the first price update
+   */
+  public async waitInitialFetch(pollingInterval: number = 100): Promise<void> {
     if (this.#initialFetchFinished) return
 
     return new Promise<void>(resolve => {
@@ -144,6 +176,13 @@ export default class PriceStorageExtension extends SdkExtension {
     this._prices.get(network.name)?.set(Address.zeroAddress, nativeRate)
   }
 
+  /**
+   * Request a price refresh. A new request is issued only if none is
+   * currently in progress.
+   *
+   * @param {symbol} forceTask if set, cancels the current request and starts a new one
+   * @returns {Promise<void>}
+   */
   public async requestPricesUpdate(forceTask?: symbol): Promise<void> {
     if (Date.now() - this.#updateTimestamp < (this.config?.updateInterval ?? 6000) || this.#fetchingPrices) return
 
@@ -160,7 +199,12 @@ export default class PriceStorageExtension extends SdkExtension {
       }).finally(() => this.eventBus.emitEvent("onPriceStoragePricesUpdated"))
   }
 
-  public async forceRefetch() {
+  /**
+   * Force a price refresh.
+   *
+   * @returns {Promise<void>}
+   */
+  public async forceRefetch(): Promise<void> {
     if (this.#forceRefetchTimeout) clearTimeout(this.#forceRefetchTimeout)
 
     return new Promise<void>(resolve => {
@@ -183,9 +227,30 @@ export default class PriceStorageExtension extends SdkExtension {
     })
   }
 
+  /**
+   * Get the price of a specific token.
+   *
+   * @param {Network} tokenOrNetwork network of the token
+   * @param {Address} address        token address
+   * @returns {Amount} token price
+   */
   public getPrice(tokenOrNetwork: Network, address: Address): Amount
+
+  /**
+   * Get the price of a specific token.
+   *
+   * @param {BasicToken} tokenOrNetwork token object
+   * @returns {Amount} token price
+   */
   public getPrice(tokenOrNetwork: BasicToken): Amount
 
+  /**
+   * Get the price of a specific token.
+   *
+   * @param {BasicToken | Network} tokenOrNetwork token object or network
+   * @param {Address}              address        token address
+   * @returns {Amount} token price
+   */
   public getPrice(tokenOrNetwork: BasicToken | Network, address?: Address): Amount {
     const network = "name" in tokenOrNetwork ? tokenOrNetwork : tokenOrNetwork.network
     const tokenAddress = "name" in tokenOrNetwork ? address! : tokenOrNetwork.address

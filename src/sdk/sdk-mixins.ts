@@ -5,6 +5,7 @@ import { ExchangeQuota, ExecutorCallData, SimulatedRoute } from "~/types"
 
 type TMixinList = { [key: string]: { [key: string]: { [key: string]: any } } }
 
+/** Mixins description */
 export interface InternalMixinList extends TMixinList {
   internal: {
     buildCrossChainTransaction: {
@@ -13,6 +14,7 @@ export interface InternalMixinList extends TMixinList {
       arrivalGasDataEncoded: string
       multiCallTransactionRequest: ExecutorCallData
       approveTransactionRequest: ExecutorCallData
+      resetApproveTransactionRequest: ExecutorCallData
       outputAmountsCorrected: [Amount, Amount[]]
       quotaComputationFinalized: ExchangeQuota,
       tokenTransferCallDataFinalized: Promise<string> | string
@@ -58,16 +60,35 @@ type MixinStorage<
   callback: (value: InternalMixinList[L][N][E]) => InternalMixinList[L][N][E]
   identifier: string
 }
-
-export class SdkMixins<ExtensionMixins extends TMixinList = TMixinList, CombinedMixinsList extends TMixinList = ExtensionMixins & InternalMixinList> {
+/**
+ * SDK sub‑system that implements mixins
+ */
+export class SdkMixins<
+  ExtensionMixins extends TMixinList = TMixinList,
+  CombinedMixinsList extends TMixinList = ExtensionMixins & InternalMixinList
+> {
   private mixins: MixinStorage<any, any, any>[] = []
 
+  /**
+   * Register a mixin that alters specific logic
+   *
+   * @param location   global namespace the mixin belongs to
+   * @param namespace  local namespace the mixin belongs to
+   * @param breakpoint mixin name (logical breakpoint)
+   * @param callback   function that mutates the value
+   * @returns {string} identifier of the registered mixin
+   */
   public addMixin<
     Location extends keyof CombinedMixinsList,
     Namespace extends keyof CombinedMixinsList[Location],
     Breakpoint extends keyof CombinedMixinsList[Location][Namespace],
     Value extends CombinedMixinsList[Location][Namespace][Breakpoint]
-  >(location: Location, namespace: Namespace, breakpoint: Breakpoint, callback: (value: Value) => Value) {
+  >(
+    location: Location,
+    namespace: Namespace,
+    breakpoint: Breakpoint,
+    callback: (value: Value) => Value
+  ): string {
     const identifier = (Math.random() * 1e8).toFixed(16)
 
     this.mixins.push({
@@ -81,6 +102,15 @@ export class SdkMixins<ExtensionMixins extends TMixinList = TMixinList, Combined
     return identifier
   }
 
+  /**
+   * Internal convenience method that returns a mixin applicator
+   * for a given global namespace.
+   *
+   * @internal
+   *
+   * @param {Location} location global namespace
+   * @returns mixin applicator bound to the specified namespace
+   */
   public getMixinApplicator<Location extends keyof CombinedMixinsList>(location: Location) {
     const self = this
 
@@ -93,8 +123,9 @@ export class SdkMixins<ExtensionMixins extends TMixinList = TMixinList, Combined
       value: CombinedMixinsList[Location][Namespace][Breakpoint]
     ): CombinedMixinsList[Location][Namespace][Breakpoint] => {
       try {
-        const mixinsToApply = self.mixins
-          .filter(m => m.location === location && m.namespace === namespace && m.breakpoint === breakpoint)
+        const mixinsToApply = self.mixins.filter(
+          m => m.location === location && m.namespace === namespace && m.breakpoint === breakpoint
+        )
 
         if (mixinsToApply.length === 0) return value
 
@@ -105,28 +136,45 @@ export class SdkMixins<ExtensionMixins extends TMixinList = TMixinList, Combined
         })
 
         return _value
-      }
-      catch {
+      } catch {
         return value
       }
     }
 
     return {
+      /** Apply mixins for the specified logic */
       applyMixin: _applyMixin,
 
+      /** Obtain a more specific applicator for a local namespace */
       getNamespaceApplicator: <Namespace extends keyof CombinedMixinsList[Location]>(namespace: Namespace) => ({
+        /** Apply mixins for the specified logic */
         applyMixin: <
           Breakpoint extends keyof CombinedMixinsList[Location][Namespace]
-        >(breakpoint: Breakpoint, value: CombinedMixinsList[Location][Namespace][Breakpoint]) =>
-          _applyMixin(namespace, breakpoint, value)
+        >(
+          breakpoint: Breakpoint,
+          value: CombinedMixinsList[Location][Namespace][Breakpoint]
+        ) => _applyMixin(namespace, breakpoint, value)
       })
     }
   }
 
+  /**
+   * Remove a mixin by its identifier
+   *
+   * @param {string} identifier mixin identifier returned by `addMixin`
+   */
   public removeMixin(identifier: string) {
     this.mixins = this.mixins.filter(mixin => mixin.identifier !== identifier)
   }
 
+  /**
+   * Deep‑copy helper that unlinks objects,
+   * producing copies without shared references.
+   *
+   * @param _value object to copy
+   * @returns cloned object in a new memory space
+   * @private
+   */
   private unlink<T = any>(_value: T): T {
     if (Array.isArray(_value)) {
       return [..._value].map(child => this.unlink(child)) as T

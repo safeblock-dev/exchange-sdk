@@ -1,6 +1,7 @@
 import { Address, Amount, ethersProvider } from "@safeblock/blockchain-utils"
 import { WrappedToken__factory } from "~/abis/types"
 import { contractAddresses, publicBackendURL } from "~/config"
+import { PriceStorageExtension } from "~/extensions"
 import evmBuildRawTransaction from "~/sdk/evm-converter/evm-build-raw-transaction"
 import EvmCrossChainExtension from "~/sdk/evm-converter/evm-cross-chain-extension"
 import ExchangeConverter from "~/sdk/exchange-converter"
@@ -35,13 +36,33 @@ export default class EvmConverter extends ExchangeConverter {
       const {
         tokenContract: fromTokenContract,
         approveWanted,
-        approveAmount
+        approveAmount,
+        resetRequired
       } = await ExchangeUtils.getTokenTransferDetails(options.route.tokenIn, options.from, options.route.amountIn, this.sdkConfig)
 
-      if (approveWanted) approveCallData = fromTokenContract.interface.encodeFunctionData("approve", [
-        contractAddresses.entryPoint(options.route.tokenIn.network, this.sdkConfig),
-        approveAmount.toBigInt()
-      ])
+      const basicTransactionDetails = {
+        gasLimitMultiplier: 1,
+        value: new Amount(0, 18, false),
+        to: options.route.tokenIn.address,
+        network: options.route.tokenIn.network
+      }
+
+      this.sdkConfig.debugLogListener?.(`Build: Approve reset requested: ${ resetRequired ? "yes" : "no" }`)
+      if (resetRequired && approveWanted) callData.push({
+        callData: fromTokenContract.interface.encodeFunctionData("approve", [
+          contractAddresses.entryPoint(options.route.tokenIn.network, this.sdkConfig), 0
+        ]),
+        ...basicTransactionDetails
+      })
+
+      this.sdkConfig.debugLogListener?.(`Build: Approve verification: ${ approveWanted ? "wanted" : "approved" }`)
+      if (approveWanted) callData.push({
+        callData: fromTokenContract.interface.encodeFunctionData("approve", [
+          contractAddresses.entryPoint(options.route.tokenIn.network, this.sdkConfig),
+          approveAmount.toBigInt()
+        ]),
+        ...basicTransactionDetails
+      })
     }
 
     if (approveCallData) {
@@ -114,6 +135,9 @@ export default class EvmConverter extends ExchangeConverter {
 
     this.sdkConfig.debugLogListener?.(`Fetch: Loading routes: ${ request.amountIn.toReadable() } ${ request.tokenIn.address
       .toString().slice(0, 10) } -> ${ request.amountsOut.map(a => a.toReadable()).join(",") } ${ request.tokensOut.map(t => t.address.toString().slice(2, 8)).join(",") }`)
+
+    await this.sdkInstance.withExtension(PriceStorageExtension, async extension => await extension
+      .waitInitialFetch(100))
 
     if (ExchangeUtils.isWrapUnwrap(request) && request.tokenIn.network === request.tokensOut[0].network && request.tokensOut.length === 1) {
       const { amountIn, amountsOut, tokenIn, tokensOut, destinationAddress, slippageReadablePercent } = request

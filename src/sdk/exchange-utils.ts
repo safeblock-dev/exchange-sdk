@@ -76,17 +76,34 @@ export class ExchangeUtils {
 
     let approveWanted: Amount = new Amount(0, token.decimals, false)
     if (!Address.isZero(token.address) && ownerAddress) {
-
       const allowance = new BigNumber((await tokenContract.allowance(ownerAddress.toString(), contractAddresses.entryPoint(token.network, config), {})).toString()).dp(0)
 
       if (allowance.lt(spendAmount.toString())) approveWanted = new Amount(spendAmount.toReadableBigNumber(), token.decimals, true)
     }
 
+    const resetRequired = approveWanted.toReadableBigNumber().lte(0) ? false
+      : await this.getTokenResetRequiredStatus(token, spendAmount, ownerAddress, config)
+
     return {
       tokenContract,
       approveWanted: approveWanted.toReadableBigNumber().gt(0),
-      approveAmount: approveWanted
+      approveAmount: approveWanted,
+      resetRequired: resetRequired
     }
+  }
+
+  private static async getTokenResetRequiredStatus(token: BasicToken, spendAmount: Amount, ownerAddress: Address, config?: SdkConfig) {
+    const tokenIface = Token__factory.createInterface()
+    const _approve = tokenIface.encodeFunctionData("approve", [
+      contractAddresses.entryPoint(token.network, config),
+      spendAmount.toBigNumber().toFixed(0)
+    ])
+
+    const _estimation = await ethersProvider(token.network)
+      ?.estimateGas({ from: ownerAddress.toString(), to: token.address.toString(), data: _approve })
+      .catch(() => null)
+
+    return !_estimation
   }
 
   public static isWrap(request: BasicRequest) {
