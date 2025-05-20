@@ -18,7 +18,8 @@ export interface InternalMixinList extends TMixinList {
       outputAmountsCorrected: [Amount, Amount[]]
       quotaComputationFinalized: ExchangeQuota,
       tokenTransferCallDataFinalized: Promise<string> | string
-      stargateSendV2CallData: string
+      bridgeTransactionCallData: string
+      bridgeTransactionNativeAmount: string
       callOffset: string
     },
     computeQuotaExecutionGasUsage: {

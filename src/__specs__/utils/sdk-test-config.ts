@@ -1,4 +1,5 @@
-import { Address, base, bnb, mainnet, matic } from "@safeblock/blockchain-utils"
+import { Address, avalanche, base, bnb, mainnet, matic, optimism } from "@safeblock/blockchain-utils"
+import { contractAddresses } from "~/config"
 import { TokensListExtension, PriceStorageExtension } from "~/extensions"
 import { SdkConfig } from "~/sdk"
 import { BasicToken } from "~/types"
@@ -97,12 +98,20 @@ const tokensListExtensionConfig: Record<string, BasicToken[]> = {
   [bnb.name]: [bnbUSDT, bnbDAI, bnbDOGE, bnbUSDC, bnbWBNB, bnbBNB],
   [matic.name]: [maticUSDC, maticUSDT, maticMATIC, maticWMATIC],
   [mainnet.name]: [mainnetUSDT, mainnetETH, mainnetUSDC],
-  [base.name]: [baseWETH, baseUSDC]
+  [base.name]: [baseWETH, baseUSDC],
+  [avalanche.name]: [
+    { address: Address.from(Address.zeroAddress), decimals: 18, network: avalanche },
+    { address: Address.from(contractAddresses.usdcParams(avalanche).address), decimals: 6, network: avalanche }
+  ],
+  [optimism.name]: [
+    { address: Address.from(Address.zeroAddress), decimals: 18, network: optimism },
+    { address: Address.from(contractAddresses.usdcParams(optimism).address), decimals: 6, network: optimism }
+  ]
 }
 
 const sdkConfig: SdkConfig = {
   routePriceDifferenceLimit: 20,
-  debugLogListener: console.log,
+  //debugLogListener: console.log,
   backend: {
     url: "https://api.safeblock.com"
   },

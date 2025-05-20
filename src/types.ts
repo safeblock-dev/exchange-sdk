@@ -131,10 +131,12 @@ export type ExecutorCallData = {
  * Exchange quota
  */
 export interface ExchangeQuota {
+  /** Name of the third party bridge that will execute cross-chain transfer */
+  thirdPartyBridge?: string
   /** Data for the transactions executed during the swap */
   executorCallData: ExecutorCallData[]
   /** Swap route */
-  exchangeRoute: RouteStep[][][],
+  exchangeRoute: RouteStep[][][]
   /** Estimated gas usage for the swap */
   estimatedGasUsage: Record<string, Amount>
   /** Input token amount */
