@@ -1,4 +1,4 @@
-import { Address, Amount, ethersProvider } from "@safeblock/blockchain-utils"
+import { Address, Amount, arrayUtils, ethersProvider } from "@safeblock/blockchain-utils"
 import { WrappedToken__factory } from "~/abis/types"
 import { contractAddresses, publicBackendURL } from "~/config"
 import { PriceStorageExtension } from "~/extensions"
@@ -220,6 +220,9 @@ export default class EvmConverter extends ExchangeConverter {
     }
 
     if (simulatedRoute instanceof SdkException) return simulatedRoute
+
+    if (arrayUtils.safeReduce(simulatedRoute.amountsOut.map(a => a.toReadableBigNumber())).lte(0))
+      return new SdkException("Routes simulation failed: zero amount after simulation", SdkExceptionCode.SimulationFailed)
 
     if (simulatedRoute.amountsOut.length !== simulatedRoute.tokensOut.length)
       return new SdkException("Routes simulation failed", SdkExceptionCode.SimulationFailed)

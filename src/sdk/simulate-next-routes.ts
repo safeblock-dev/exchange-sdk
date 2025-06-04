@@ -1,4 +1,4 @@
-import { Amount, arrayUtils, ethersProvider } from "@safeblock/blockchain-utils"
+import { Address, Amount, arrayUtils, ethersProvider } from "@safeblock/blockchain-utils"
 import BigNumber from "bignumber.js"
 import { Quoter__factory } from "~/abis/types"
 import { contractAddresses } from "~/config"
@@ -30,12 +30,21 @@ export default async function simulateNextRoutes(options: Options): Promise<Simu
 
   const mismatchAmount = new BigNumber(1e18).minus(arrayUtils.safeReduce(percents.map(p => new BigNumber(p))))
 
+  options.config.debugLogListener?.(`Simulate v2: Simulating route ${ route.map(r => r.map(t => t.address).join(":")).join(",") } with percents ${ percents.join(",") }...`)
+  const splitPercents = [...percents.slice(0, -1), mismatchAmount.plus((percents.at(-1) || "")).toFixed()]
+
+  options.config.debugLogListener?.(`Simulate v2: Adjusting percents into ${ splitPercents.join(",") }...`)
+
   const result = await quoter.multiswap2({
     fullAmount: request.amountIn.toString(),
     tokenIn: request.tokenIn.address.toString(),
-    tokensOut: [request.tokensOut[0].address.toString()],
+    tokensOut: [
+      Address.equal(request.tokensOut[0].address, Address.zeroAddress)
+        ? Address.wrappedOf(request.tokensOut[0].network)
+        : request.tokensOut[0].address.toString()
+    ],
     minAmountsOut: [],
-    amountInPercentages: [...percents.slice(0, -1), mismatchAmount.plus((percents.at(-1) || "")).toFixed()],
+    amountInPercentages: splitPercents,
     pairs: route.map(part => convertPairsToHex(part))
   })
 
