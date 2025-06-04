@@ -180,19 +180,20 @@ export default class EvmConverter extends ExchangeConverter {
           limit: this.sdkConfig.routesCountLimit ?? 3,
           fromToken: request.tokenIn,
           toToken: tokenOut,
-          amountInRaw: (request.exactInput && request.tokensOut.length === 1) ? request.amountIn.toString() : undefined
+          amountInRaw: (request.exactInput && request.tokensOut.length === 1 && request.tokenIn.network.chainId.toString() === "56") ? request.amountIn.toString() : undefined
         })
       ))
     ))
 
-    this.sdkConfig.debugLogListener?.(`Fetch: Received ${ routes.map(r => r.routes).flat(2).length } (${ this.sdkConfig.routesCountHardLimit ?? 40 } limit) raw routes for single-chain trade`)
+    const routesCount = routes.map(r => r.routes).flat(2).length
+    this.sdkConfig.debugLogListener?.(`Fetch: Received ${ routesCount } (${ this.sdkConfig.routesCountHardLimit ?? 40 } limit) raw routes for single-chain trade`)
 
     if (!this.sdkInstance.verifyTask(taskId)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 
-    if (routes.length === 0) return new SdkException("Routes not found", SdkExceptionCode.RoutesNotFound)
+    if (routesCount === 0) return new SdkException("Routes not found", SdkExceptionCode.RoutesNotFound)
 
     let simulatedRoute: SimulatedRoute | SdkException
-    if (request.exactInput && request.tokensOut.length === 1) {
+    if (request.exactInput && request.tokensOut.length === 1 && request.tokenIn.network.chainId.toString() === "56") {
       if (!routes[0].percents) return new SdkException("Route percents for part swap not found", SdkExceptionCode.RoutesNotFound)
 
       simulatedRoute = await simulateNextRoutes({

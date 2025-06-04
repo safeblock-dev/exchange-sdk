@@ -20,7 +20,7 @@ export default async function evmBuildRawTransaction(from: Address, request: Exc
   let multiSwapData: string
   let amountIn: Amount = request.amountIn
 
-  if (route.isExactInput) {
+  if (route.isExactInput || route.tokenIn.network.chainId.toString() !== "56" || route.tokensOut.length > 1) {
     multiSwapData = multiSwapIface.encodeFunctionData("multiswap2", [
       {
         fullAmount: route.amountIn.toBigInt(),
