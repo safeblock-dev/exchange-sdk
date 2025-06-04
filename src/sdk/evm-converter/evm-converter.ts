@@ -172,6 +172,7 @@ export default class EvmConverter extends ExchangeConverter {
     if (alternativeRoute !== null) return alternativeRoute
 
     this.sdkConfig.debugLogListener?.(`Fetch: Fetching routes using following endpoint: ${ (request.exactInput && request.tokensOut.length === 1 && request.tokenIn.network.chainId.toString() === "56") ? "/exp/routes" : "/routes" }`)
+    this.sdkConfig.debugLogListener?.(`Fetch: Route fetch parameters: exactInput=${ request.exactInput ? "true" : "false" }, tokensLength=${ request.tokensOut.length === 1 }, inputNetwork=${ request.tokenIn.network.chainId.toString() }, amountIn=${ request.amountIn.toString() }`)
 
     const routes = (await Promise.all(
       request.tokensOut.map(tokenOut => (
