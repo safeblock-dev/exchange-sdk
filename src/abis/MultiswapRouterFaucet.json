@@ -12,11 +12,6 @@
   },
   {
     "inputs": [],
-    "name": "EfficientSwapAmount_InvalidTokenIn",
-    "type": "error"
-  },
-  {
-    "inputs": [],
     "name": "MultiswapRouterFacet_FailedV2Swap",
     "type": "error"
   },
@@ -37,11 +32,6 @@
   },
   {
     "inputs": [],
-    "name": "MultiswapRouterFacet_InvalidFeeValue",
-    "type": "error"
-  },
-  {
-    "inputs": [],
     "name": "MultiswapRouterFacet_InvalidIntCast",
     "type": "error"
   },
@@ -52,27 +42,12 @@
   },
   {
     "inputs": [],
-    "name": "MultiswapRouterFacet_InvalidNativeSender",
-    "type": "error"
-  },
-  {
-    "inputs": [],
     "name": "MultiswapRouterFacet_InvalidPairsArray",
     "type": "error"
   },
   {
     "inputs": [],
-    "name": "MultiswapRouterFacet_NewOwnerIsZeroAddress",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "MultiswapRouterFacet_SenderIsNotOwner",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "MultiswapRouterFacet_SenderMustBeUniswapV3Pool",
+    "name": "MultiswapRouterFacet_SenderMustBePool",
     "type": "error"
   },
   {
@@ -106,6 +81,11 @@
     "type": "error"
   },
   {
+    "inputs": [],
+    "name": "UniswapV2_InsufficientOutputAmount",
+    "type": "error"
+  },
+  {
     "stateMutability": "nonpayable",
     "type": "fallback"
   },
@@ -115,12 +95,7 @@
         "components": [
           {
             "internalType": "uint256",
-            "name": "amountIn",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "minAmountOut",
+            "name": "fullAmount",
             "type": "uint256"
           },
           {
@@ -129,17 +104,32 @@
             "type": "address"
           },
           {
-            "internalType": "bytes32[]",
+            "internalType": "address[]",
+            "name": "tokensOut",
+            "type": "address[]"
+          },
+          {
+            "internalType": "uint256[]",
+            "name": "minAmountsOut",
+            "type": "uint256[]"
+          },
+          {
+            "internalType": "uint256[]",
+            "name": "amountInPercentages",
+            "type": "uint256[]"
+          },
+          {
+            "internalType": "bytes32[][]",
             "name": "pairs",
-            "type": "bytes32[]"
+            "type": "bytes32[][]"
           }
         ],
-        "internalType": "struct IMultiswapRouterFacet.MultiswapCalldata",
+        "internalType": "struct IMultiswapRouterFacet.Multiswap2Calldata",
         "name": "data",
         "type": "tuple"
       }
     ],
-    "name": "multiswap",
+    "name": "multiswap2",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -184,7 +174,7 @@
         "type": "tuple"
       }
     ],
-    "name": "multiswap2",
+    "name": "multiswap2Reverse",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

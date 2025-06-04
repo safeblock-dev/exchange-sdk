@@ -224,7 +224,7 @@ export default class SdkCore<Configuration extends SdkConfig = SdkConfig> extend
 
       if (!route) return new SdkException("Route not selected", SdkExceptionCode.InvalidRequest)
 
-      const singleChainTransactions = await converter.createSingleChainTransaction(from, route, this.currentTask)
+      const singleChainTransactions = await converter.createSingleChainTransaction(from, this.routeToRequest(route), route, this.currentTask)
 
       if (singleChainTransactions instanceof SdkException) return singleChainTransactions
 
