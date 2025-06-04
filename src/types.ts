@@ -154,6 +154,8 @@ export interface SimulatedRoute {
   originalRouteSet: RouteStep[][]
   routeReference: string
 
+  estimatedPartialPercents?: string[]
+
   tokenIn: BasicToken
   tokensOut: BasicToken[]
   amountIn: Amount

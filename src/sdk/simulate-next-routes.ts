@@ -65,6 +65,7 @@ export default async function simulateNextRoutes(options: Options): Promise<Simu
     arrivalGasAmount: request.arrivalGasAmount,
     destinationAddress: request.destinationAddress,
     originalRouteSet: route,
+    estimatedPartialPercents: splitPercents,
     slippageReadablePercent: request.slippageReadablePercent,
     priceImpactPercents: [ExchangeUtils.computePriceImpact(
       request,

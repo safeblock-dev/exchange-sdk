@@ -24,7 +24,7 @@ export default async function evmBuildRawTransaction(from: Address, request: Exc
     multiSwapData = multiSwapIface.encodeFunctionData("multiswap2", [
       {
         fullAmount: route.amountIn.toBigInt(),
-        amountInPercentages: adjustPercentages(route.amountOutReadablePercentages),
+        amountInPercentages: route.estimatedPartialPercents || adjustPercentages(route.amountOutReadablePercentages),
         minAmountsOut: route.amountsOut.map((amount, index) => {
           if (route.originalRouteSet[index].length === 0) return "0" // Tokens transfer only
 
