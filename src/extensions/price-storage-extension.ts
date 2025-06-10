@@ -1,4 +1,4 @@
-import { Address, Amount, arrayUtils, multicall, MultiCallRequest } from "@safeblock/blockchain-utils"
+import { Address, Amount, multicall, MultiCallRequest } from "@safeblock/blockchain-utils"
 import { Network } from "ethers"
 import { OffchainOracle__factory } from "~/abis/types"
 import { contractAddresses } from "~/config"
@@ -104,76 +104,91 @@ export default class PriceStorageExtension extends SdkExtension {
     if (!this._prices.has(network.name)) this._prices.set(network.name, new Map())
 
     const usdc = contractAddresses.usdcParams(network)
-
     if (!usdc) return
 
-    const requests: MultiCallRequest[] = this.sdk.extension(TokensListExtension)
+    const tokens = this.sdk.extension(TokensListExtension)
       .list(network)
       .filter(
-        (token) =>
-          !Address.isZero(token.address) &&
-          !Address.equal(token.address, Address.wrappedOf(network))
+        (t) =>
+          !Address.isZero(t.address) &&
+          !Address.equal(t.address, Address.wrappedOf(network))
       )
-      .map((token) => ({
-        target: Address.from(contractAddresses.offchainOracle(network)),
-        contractInterface: OffchainOracle__factory,
-        calls: [
-          {
-            method: "getRate",
-            reference: token.address.toString(),
-            methodParameters: [
-              token.address.toString(),
-              Address.wrappedOf(network),
-              false
-            ]
-          }
-        ]
-      }))
+
+    const requests: MultiCallRequest[] = tokens.map((token) => ({
+      target: Address.from(contractAddresses.offchainOracle(network)),
+      contractInterface: OffchainOracle__factory,
+      calls: [
+        {
+          method: "getRate",
+          reference: token.address.toString(),
+          methodParameters: [
+            token.address.toString(),
+            Address.wrappedOf(network),
+            false
+          ]
+        }
+      ]
+    }))
 
     if (requests.length === 0) return
 
-    let rates = await arrayUtils.asyncNonNullable(
-      arrayUtils.asyncMap(
-        multicall<[BigInt]>(network, requests),
-        (response) => {
-          if (!response.data) return null
+    const batches: MultiCallRequest[][] = []
+    for (let i = 0; i < requests.length; i += 25) {
+      batches.push(requests.slice(i, i + 25))
+    }
 
-          const token = this.sdk.extension(TokensListExtension)
-            .list(network)
-            .find((t) => Address.equal(t.address, response.reference ?? ""))
-
-          if (!token) return null
-
-          const numerator = BigInt(10) ** BigInt(token.decimals)
-          const denominator = BigInt(10) ** BigInt(18)
-
-          if (!response.data[0]) return null
-
-          return {
-            token: token,
-            rate: (BigInt(response.data[0].toString()) * numerator) / denominator
-          }
-        }
-      )
+    const batchResults = await Promise.all(
+      batches.map((batch) => multicall<[bigint]>(network, batch))
     )
+
+    const flatResponses = batchResults.flat()
+
+    const rates = flatResponses
+      .map((res) => {
+        if (!res.data || !res.data[0]) return null
+
+        const token = tokens.find((t) =>
+          Address.equal(t.address, res.reference ?? "")
+        )
+        if (!token) return null
+
+        const numerator = BigInt(10) ** BigInt(token.decimals)
+        const denominator = BigInt(10) ** BigInt(18)
+
+        return {
+          token,
+          rate: (BigInt(res.data[0].toString()) * numerator) / denominator
+        }
+      })
+      .filter(Boolean) as { token: BasicToken; rate: bigint }[]
 
     if (task !== this.#currentFetchingTask) return
 
-    const usdcRate = rates.find((r) => Address.equal(r.token.address, usdc.address))?.rate
+    const usdcRate = rates.find((r) =>
+      Address.equal(r.token.address, usdc.address)
+    )?.rate
     if (!usdcRate) return
 
-    rates.forEach((rate) => {
-      if (Address.equal(rate.token.address, usdc.address)) {
-        this._prices.get(network.name)?.set(rate.token.address.toString(), BigInt(10 ** usdc.decimals))
+    const priceMap = this._prices.get(network.name)!
+
+    for (const { token, rate } of rates) {
+      if (Address.equal(token.address, usdc.address)) {
+        priceMap.set(
+          token.address.toString(),
+          BigInt(10 ** usdc.decimals)
+        )
       }
       else {
-        this._prices.get(network.name)?.set(rate.token.address.toString(), (rate.rate * BigInt(10 ** rate.token.decimals)) / usdcRate)
+        priceMap.set(
+          token.address.toString(),
+          (rate * BigInt(10 ** token.decimals)) / usdcRate
+        )
       }
-    })
+    }
 
     const nativeRate = (BigInt(1e18) * BigInt(1e18)) / usdcRate
-    this._prices.get(network.name)?.set(Address.wrappedOf(network), nativeRate)
-    this._prices.get(network.name)?.set(Address.zeroAddress, nativeRate)
+    priceMap.set(Address.wrappedOf(network), nativeRate)
+    priceMap.set(Address.zeroAddress, nativeRate)
   }
 
   /**
