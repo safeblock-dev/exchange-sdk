@@ -190,13 +190,14 @@ export default class EvmCrossChainExtension {
     const sourceNetworkCallData: string[] = []
 
     if (sourceChainRoute) {
-      const sourceChainSwapData = await evmBuildRawTransaction(from, sourceChainRoute, this.mixins)
+      const sourceChainSwapData = await evmBuildRawTransaction(from, request, sourceChainRoute, this.mixins, this.sdkConfig)
       const sourceChainSwap = await this.parent.rawTransactionToQuota({
         recalculateApproveData: true,
         rawTransaction: sourceChainSwapData,
         from,
         route: sourceChainRoute,
-        taskId
+        taskId,
+        amountIn: sourceChainSwapData.amountIn
       })
 
       if (!this.parent.sdkInstance.verifyTask(taskId)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
@@ -211,7 +212,7 @@ export default class EvmCrossChainExtension {
     }
 
     if (destinationChainRoute) {
-      const destinationChainSwapData = await evmBuildRawTransaction(from, destinationChainRoute, this.mixins)
+      const destinationChainSwapData = await evmBuildRawTransaction(from, request, destinationChainRoute, this.mixins, this.sdkConfig)
 
       if (!this.parent.sdkInstance.verifyTask(taskId)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 

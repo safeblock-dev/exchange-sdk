@@ -1,6 +1,6 @@
 import { Address, Amount, arrayUtils, multicall, MultiCallRequest } from "@safeblock/blockchain-utils"
 import { MaxUint256 } from "ethers"
-import { MultiSwapRouter__factory } from "~/abis/types"
+import { Quoter__factory } from "~/abis/types"
 import { contractAddresses } from "~/config"
 import { PriceStorageExtension } from "~/extensions"
 import { ExchangeUtils } from "~/sdk/exchange-utils"
@@ -95,7 +95,7 @@ async function simulateSingeOutputRoutes(options: Options): Promise<SingleOutput
     }
 
     return {
-      contractInterface: MultiSwapRouter__factory,
+      contractInterface: Quoter__factory,
       target: Address.from(contractAddresses.quoter(options.tokenIn.network, options.config)),
       calls: _calls
     }

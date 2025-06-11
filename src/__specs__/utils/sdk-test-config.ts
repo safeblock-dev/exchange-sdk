@@ -94,8 +94,14 @@ const maticMATIC = {
   network: matic
 }
 
+export const bnbCAKE = {
+  address: Address.from("0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82"),
+  decimals: 18,
+  network: bnb
+}
+
 const tokensListExtensionConfig: Record<string, BasicToken[]> = {
-  [bnb.name]: [bnbUSDT, bnbDAI, bnbDOGE, bnbUSDC, bnbWBNB, bnbBNB],
+  [bnb.name]: [bnbUSDT, bnbDAI, bnbDOGE, bnbUSDC, bnbWBNB, bnbBNB, bnbCAKE],
   [matic.name]: [maticUSDC, maticUSDT, maticMATIC, maticWMATIC],
   [mainnet.name]: [mainnetUSDT, mainnetETH, mainnetUSDC],
   [base.name]: [baseWETH, baseUSDC],
@@ -113,7 +119,7 @@ const sdkConfig: SdkConfig = {
   routePriceDifferenceLimit: 20,
   //debugLogListener: console.log,
   backend: {
-    url: "https://api.safeblock.com"
+    url: "https://api.safeblock.cc"
   },
   extensions: env => [
     new TokensListExtension(env.sdk, env.eventBus, tokensListExtensionConfig),

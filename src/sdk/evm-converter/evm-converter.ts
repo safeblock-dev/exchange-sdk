@@ -1,4 +1,4 @@
-import { Address, Amount, ethersProvider } from "@safeblock/blockchain-utils"
+import { Address, Amount, arrayUtils, ethersProvider } from "@safeblock/blockchain-utils"
 import { WrappedToken__factory } from "~/abis/types"
 import { contractAddresses, publicBackendURL } from "~/config"
 import { PriceStorageExtension } from "~/extensions"
@@ -9,6 +9,7 @@ import { ExchangeUtils } from "~/sdk/exchange-utils"
 import SdkCore, { SdkConfig } from "~/sdk/sdk-core"
 import SdkException, { SdkExceptionCode } from "~/sdk/sdk-exception"
 import { SdkMixins } from "~/sdk/sdk-mixins"
+import simulateNextRoutes from "~/sdk/simulate-next-routes"
 import simulateRoutes from "~/sdk/simulate-routes"
 import { ExchangeQuota, ExchangeRequest, ExecutorCallData, SimulatedRoute } from "~/types"
 import getExchangeRoutes from "~/utils/get-exchange-routes"
@@ -17,6 +18,7 @@ interface RawTransactionConverterOptions {
   from: Address
   taskId: symbol
   route: SimulatedRoute
+  amountIn: Amount,
   rawTransaction: Awaited<ReturnType<typeof evmBuildRawTransaction>>
   approveCallData?: string | undefined
   recalculateApproveData?: boolean
@@ -38,7 +40,7 @@ export default class EvmConverter extends ExchangeConverter {
         approveWanted,
         approveAmount,
         resetRequired
-      } = await ExchangeUtils.getTokenTransferDetails(options.route.tokenIn, options.from, options.route.amountIn, this.sdkConfig)
+      } = await ExchangeUtils.getTokenTransferDetails(options.route.tokenIn, options.from, options.amountIn, this.sdkConfig)
 
       const basicTransactionDetails = {
         gasLimitMultiplier: 1,
@@ -79,7 +81,7 @@ export default class EvmConverter extends ExchangeConverter {
     callData.push({
       callData: multiSwapCallData.multiCallData,
       gasLimitMultiplier: 1.2,
-      value: Address.isZero(options.route.tokenIn.address) ? options.route.amountIn : new Amount(0, 18, false),
+      value: Address.isZero(options.route.tokenIn.address) ? options.amountIn : new Amount(0, 18, false),
       to: Address.from(contractAddresses.entryPoint(options.route.tokenIn.network, this.sdkConfig)),
       network: options.route.tokenIn.network
     })
@@ -87,7 +89,7 @@ export default class EvmConverter extends ExchangeConverter {
     const rawQuota = {
       executorCallData: callData,
       exchangeRoute: [options.route.originalRouteSet],
-      amountIn: options.route.amountIn,
+      amountIn: options.amountIn,
       amountsOut: options.route.amountsOut,
       tokenIn: options.route.tokenIn,
       tokensOut: options.route.tokensOut,
@@ -108,13 +110,15 @@ export default class EvmConverter extends ExchangeConverter {
     return crossChain.createMultiChainExchangeTransaction(from, request, taskId)
   }
 
-  public async createSingleChainTransaction(from: Address, route: SimulatedRoute, taskId: symbol): Promise<SdkException | ExchangeQuota> {
-    const rawTransaction = await evmBuildRawTransaction(from, route, this.mixins)
+  public async createSingleChainTransaction(from: Address, request: ExchangeRequest, route: SimulatedRoute, taskId: symbol, signal?: AbortSignal): Promise<SdkException | ExchangeQuota> {
+    const rawTransaction = await evmBuildRawTransaction(from, request, route, this.mixins, this.sdkConfig)
 
+    if (signal?.aborted) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
     return this.mixins.getMixinApplicator("internal")
       .applyMixin("createSingleChainTransaction", "singleChainQuotaBuilt", await this.rawTransactionToQuota(
         {
           recalculateApproveData: true,
+          amountIn: rawTransaction.amountIn,
           rawTransaction,
           from,
           taskId,
@@ -123,7 +127,7 @@ export default class EvmConverter extends ExchangeConverter {
       ))
   }
 
-  public async fetchRoute(request: ExchangeRequest, taskId: symbol): Promise<SdkException | SimulatedRoute> {
+  public async fetchRoute(request: ExchangeRequest, taskId: symbol, signal?: AbortSignal): Promise<SdkException | SimulatedRoute> {
     if (request.tokensOut.length > 1 && !request.exactInput)
       return new SdkException("Cannot process split swap request in the exact output mode", SdkExceptionCode.InvalidRequest)
 
@@ -164,38 +168,70 @@ export default class EvmConverter extends ExchangeConverter {
       })
     }
 
+    if (signal?.aborted) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
+
     const alternativeRoute = await this.rerouteCrossChainRoutesFetch(request, Address.from(Address.zeroAddress), taskId)
 
     if (alternativeRoute !== null) return alternativeRoute
 
-    const routes = await Promise.all(
+    const smartRoutingAvailable = request.exactInput && request.tokensOut.length === 1 && request.smartRouting === true
+
+    this.sdkConfig.debugLogListener?.(`Fetch: Fetching routes using following endpoint: ${ smartRoutingAvailable ? "/exp/routes" : "/routes" }`)
+    this.sdkConfig.debugLogListener?.(`Fetch: Route fetch parameters: exactInput=${ request.exactInput ? "true" : "false" }, tokensLength=${ request.tokensOut.length === 1 }, inputNetwork=${ request.tokenIn.network.chainId.toString() }, amountIn=${ request.amountIn.toString() }`)
+
+    const routes = (await Promise.all(
       request.tokensOut.map(tokenOut => (
         getExchangeRoutes({
+          signal,
           backendUrl: this.sdkConfig.backend?.url ?? publicBackendURL,
           headers: this.sdkConfig.backend?.headers,
           bannedDexIds: this.sdkInstance.dexBlacklist.toArray(),
           limit: this.sdkConfig.routesCountLimit ?? 3,
           fromToken: request.tokenIn,
-          toToken: tokenOut
+          toToken: tokenOut,
+          amountInRaw: smartRoutingAvailable ? request.amountIn.toString() : undefined
         })
       ))
-    )
+    ))
 
-    this.sdkConfig.debugLogListener?.(`Fetch: Received ${ routes.flat(1).length } (${ this.sdkConfig.routesCountHardLimit ?? 30 } limit) raw routes for single-chain trade`)
+    if (signal?.aborted) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
+
+    const routesCount = routes.map(r => r.routes).flat(2).length
+    this.sdkConfig.debugLogListener?.(`Fetch: Received ${ routesCount } (${ this.sdkConfig.routesCountHardLimit ?? 40 } limit) raw routes for single-chain trade`)
 
     if (!this.sdkInstance.verifyTask(taskId)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 
-    if (routes.length === 0) return new SdkException("Routes not found", SdkExceptionCode.RoutesNotFound)
+    if (routesCount === 0) return new SdkException("Routes not found", SdkExceptionCode.RoutesNotFound)
 
-    const simulatedRoute = this.mixins.getMixinApplicator("internal")
-      .applyMixin("fetchRoute", "receivedFinalizedRoute", await simulateRoutes(
+    let simulatedRoute: SimulatedRoute | SdkException
+    if (smartRoutingAvailable) {
+      if (!routes[0].percents) return new SdkException("Route percents for part swap not found", SdkExceptionCode.RoutesNotFound)
+
+      simulatedRoute = await simulateNextRoutes({
         request,
-        routes.slice(0, this.sdkConfig.routesCountHardLimit ?? 30),
-        this.sdkConfig,
-        this.sdkInstance
-      ))
+        sdkInstance: this.sdkInstance,
+        config: this.sdkConfig,
+        percents: routes[0].percents,
+        route: routes[0].routes
+      }) as any as SimulatedRoute
+    }
+    else {
+      const limitedRoutes = routes.map(r => r.routes.slice(0, this.sdkConfig.routesCountHardLimit ?? 40))
 
+      simulatedRoute = this.mixins.getMixinApplicator("internal")
+        .applyMixin("fetchRoute", "receivedFinalizedRoute", await simulateRoutes(
+          request,
+          limitedRoutes,
+          this.sdkConfig,
+          this.sdkInstance
+        ))
+    }
+
+    if (signal?.aborted) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
     if (simulatedRoute instanceof SdkException) return simulatedRoute
+
+    if (arrayUtils.safeReduce(simulatedRoute.amountsOut.map(a => a.toReadableBigNumber())).lte(0))
+      return new SdkException("Routes simulation failed: zero amount after simulation", SdkExceptionCode.SimulationFailed)
 
     if (simulatedRoute.amountsOut.length !== simulatedRoute.tokensOut.length)
       return new SdkException("Routes simulation failed", SdkExceptionCode.SimulationFailed)
