@@ -2,7 +2,7 @@ import CombinedSet from "~/utils/combined-set"
 
 export default class StateManager {
   protected currentTask = Symbol()
-  protected currentRequestController: AbortController | null = null
+  protected currentRequestController: AbortController = new AbortController()
 
   public readonly dexBlacklist: CombinedSet<string> = new CombinedSet()
 
@@ -17,7 +17,7 @@ export default class StateManager {
   }
 
   public verifyTask(task: symbol) {
-    if (this.currentRequestController?.signal.aborted) return false
+    if (this.currentRequestController.signal.aborted) return false
 
     return this.currentTask === task
   }

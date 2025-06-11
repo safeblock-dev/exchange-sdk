@@ -73,13 +73,13 @@ export default class SafeBlock<Configuration extends SdkConfig = SdkConfig> exte
    * @returns an `SdkException` or an `ExchangeQuota`
    */
   public async createQuota(from: Address, request: ExchangeRequest, task: symbol) {
-    const routes = await this.findRoute(request)
+    const routes = await this.findRoute(request, this.currentRequestController.signal)
 
     if (!this.verifyTask(task)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 
     if (routes instanceof SdkException) return routes
 
-    const quota = this.createQuotaFromRoute(from, routes)
+    const quota = this.createQuotaFromRoute(from, routes, this.currentRequestController.signal)
 
     if (!this.verifyTask(task)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 
