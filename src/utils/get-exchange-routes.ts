@@ -18,6 +18,8 @@ interface Options {
   amountInRaw?: string
   epsilon?: number
   maxPairsCount?: number
+
+  signal?: AbortSignal
 }
 
 const routesCache = new LimitedMap<string, IRoutesResponse | IRoutesResponseNext>(10_000)
@@ -39,6 +41,7 @@ export default async function getExchangeRoutes(options: Options): Promise<{ rou
       base: backendUrl,
       path: options.amountInRaw ? "/exp/routes" : "/routes",
       headers,
+      signal: options.signal,
       query: {
         from: Address.isZero(fromToken.address) ? Address.wrappedOf(fromToken.network) : fromToken.address.toString(),
         to: Address.isZero(toToken.address) ? Address.wrappedOf(toToken.network) : toToken.address.toString(),
@@ -49,7 +52,7 @@ export default async function getExchangeRoutes(options: Options): Promise<{ rou
         epsilon: options.epsilon || null,
         max_pairs_count: options.maxPairsCount || null
       }
-    })
+    }).catch(() => null)
 
     if (rawRoutes) routesCache.set(routeKey, rawRoutes, 3_600_000)
   }

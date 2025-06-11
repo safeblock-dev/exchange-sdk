@@ -110,9 +110,10 @@ export default class EvmConverter extends ExchangeConverter {
     return crossChain.createMultiChainExchangeTransaction(from, request, taskId)
   }
 
-  public async createSingleChainTransaction(from: Address, request: ExchangeRequest, route: SimulatedRoute, taskId: symbol): Promise<SdkException | ExchangeQuota> {
+  public async createSingleChainTransaction(from: Address, request: ExchangeRequest, route: SimulatedRoute, taskId: symbol, signal?: AbortSignal): Promise<SdkException | ExchangeQuota> {
     const rawTransaction = await evmBuildRawTransaction(from, request, route, this.mixins, this.sdkConfig)
 
+    if (signal?.aborted) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
     return this.mixins.getMixinApplicator("internal")
       .applyMixin("createSingleChainTransaction", "singleChainQuotaBuilt", await this.rawTransactionToQuota(
         {
@@ -126,7 +127,7 @@ export default class EvmConverter extends ExchangeConverter {
       ))
   }
 
-  public async fetchRoute(request: ExchangeRequest, taskId: symbol): Promise<SdkException | SimulatedRoute> {
+  public async fetchRoute(request: ExchangeRequest, taskId: symbol, signal?: AbortSignal): Promise<SdkException | SimulatedRoute> {
     if (request.tokensOut.length > 1 && !request.exactInput)
       return new SdkException("Cannot process split swap request in the exact output mode", SdkExceptionCode.InvalidRequest)
 
@@ -167,6 +168,8 @@ export default class EvmConverter extends ExchangeConverter {
       })
     }
 
+    if (signal?.aborted) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
+
     const alternativeRoute = await this.rerouteCrossChainRoutesFetch(request, Address.from(Address.zeroAddress), taskId)
 
     if (alternativeRoute !== null) return alternativeRoute
@@ -177,6 +180,7 @@ export default class EvmConverter extends ExchangeConverter {
     const routes = (await Promise.all(
       request.tokensOut.map(tokenOut => (
         getExchangeRoutes({
+          signal,
           backendUrl: this.sdkConfig.backend?.url ?? publicBackendURL,
           headers: this.sdkConfig.backend?.headers,
           bannedDexIds: this.sdkInstance.dexBlacklist.toArray(),
@@ -187,6 +191,8 @@ export default class EvmConverter extends ExchangeConverter {
         })
       ))
     ))
+
+    if (signal?.aborted) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 
     const routesCount = routes.map(r => r.routes).flat(2).length
     this.sdkConfig.debugLogListener?.(`Fetch: Received ${ routesCount } (${ this.sdkConfig.routesCountHardLimit ?? 40 } limit) raw routes for single-chain trade`)
@@ -219,6 +225,7 @@ export default class EvmConverter extends ExchangeConverter {
         ))
     }
 
+    if (signal?.aborted) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
     if (simulatedRoute instanceof SdkException) return simulatedRoute
 
     if (arrayUtils.safeReduce(simulatedRoute.amountsOut.map(a => a.toReadableBigNumber())).lte(0))
