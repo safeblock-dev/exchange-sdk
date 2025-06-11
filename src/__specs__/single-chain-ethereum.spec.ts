@@ -18,7 +18,8 @@ describe("Single chain exchanges in Ethereum networks", async () => {
     amountOutReadablePercentages: [100],
     tokenIn: bnbUSDT,
     tokensOut: [bnbDAI],
-    slippageReadablePercent: 1
+    slippageReadablePercent: 1,
+    smartRouting: true
   }
 
   await sdk.extension(PriceStorageExtension).forceRefetch()
