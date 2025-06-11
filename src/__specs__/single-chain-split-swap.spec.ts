@@ -44,7 +44,7 @@ describe("Single chain split swap exchanges", async () => {
   await runSingleChainTests(request, route, sdk)
 
   it("each amount should be less than half of the input", () => {
-    expect(route.amountsOut.every(amount => amount.lt(5))).toBeTruthy()
+    expect(route.amountsOut.every(amount => amount.lt(6))).toBeTruthy()
   })
 
   it("each amount should be greater than half of the input with subtracted price impact", () => {

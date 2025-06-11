@@ -29,6 +29,12 @@ export namespace BackendResponse {
     }
     tokens: Record<string, IBackendToken>
   }
+
+  export interface IRoutesResponseNext {
+    percents: string[]
+    route: IBackendRouteStep[][]
+    tokens: Record<string, IBackendToken>
+  }
 }
 
 /**
@@ -66,6 +72,8 @@ export interface SingleOutputSimulatedRoute {
 export interface SimulatedRoute {
   originalRouteSet: RouteStep[][]
   routeReference: string
+
+  estimatedPartialPercents?: string[]
 
   tokenIn: BasicToken
   tokensOut: BasicToken[]
@@ -106,6 +114,8 @@ export interface ExchangeRequest {
   destinationAddress?: Address
   /** Native currency amount for the arrival‑gas function */
   arrivalGasAmount?: Amount
+  /** Smart routing switch */
+  smartRouting?: boolean
 }
 
 /**

@@ -5,6 +5,7 @@ interface Options {
   query?: Record<string, any>
   headers?: Record<string, string>,
   body?: Record<string, any>
+  signal?: AbortSignal
 }
 
 export default async function request <T = any>(options: Options) {
@@ -28,7 +29,8 @@ export default async function request <T = any>(options: Options) {
   const response = await fetch(options.base + options.path + requestParams, {
     method: options.method ?? "GET",
     headers,
-    body: options.body ? JSON.stringify(options.body) : undefined
+    body: options.body ? JSON.stringify(options.body) : undefined,
+    signal: options.signal
   }).catch(() => null)
 
   if (!response || !response.ok) return null

@@ -70,19 +70,26 @@ export default class SafeBlock<Configuration extends SdkConfig = SdkConfig> exte
    * @param {Address}          from    user address performing the swap
    * @param {ExchangeRequest}  request swap request
    * @param {symbol}           task    current task symbol
-   * @returns {Promise<SdkException | ExchangeQuota>} an `SdkException` or an `ExchangeQuota`
+   * @returns an `SdkException` or an `ExchangeQuota`
    */
   public async createQuota(from: Address, request: ExchangeRequest, task: symbol) {
-    const routes = await this.findRoute(request)
+    const routes = await this.findRoute(request, this.currentRequestController.signal)
 
     if (!this.verifyTask(task)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 
     if (routes instanceof SdkException) return routes
 
-    const quota = this.createQuotaFromRoute(from, routes)
+    const quota = this.createQuotaFromRoute(from, routes, this.currentRequestController.signal)
+
     if (!this.verifyTask(task)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 
-    return quota
+    const content = await quota
+
+    if (content instanceof SdkException) return content
+
+    this.sdkConfig.debugLogListener?.(`Quota: Built: ${ JSON.stringify(content.executorCallData.map(c => ({ data: c.callData, value: c.value?.toString() }))) }`)
+
+    return content
   }
 
   /**

@@ -191,12 +191,13 @@ export default class SdkCore<Configuration extends SdkConfig = SdkConfig> extend
    * > `findRoute` and `createQuotaFromRoute`.
    *
    * @param {ExchangeRequest} request swap request
+   * @param signal abort controller signal
    * @returns {Promise<SdkException | SimulatedRoute>} `SdkException` or a `SimulatedRoute`
    */
-  public findRoute(request: ExchangeRequest): Promise<SdkException | SimulatedRoute> {
+  public findRoute(request: ExchangeRequest, signal?: AbortSignal): Promise<SdkException | SimulatedRoute> {
     const converter = this.resolveConverter()
 
-    return converter.fetchRoute(request, this.currentTask)
+    return converter.fetchRoute(request, this.currentTask, signal)
   }
 
   /**
@@ -207,9 +208,10 @@ export default class SdkCore<Configuration extends SdkConfig = SdkConfig> extend
    *
    * @param from  user address initiating the swap
    * @param route simulated swap route
+   * @param signal abort controller signal
    * @returns {Promise<ExchangeQuota | SdkException>} `SdkException` or an `ExchangeQuota`
    */
-  public async createQuotaFromRoute(from: Address, route: SimulatedRoute): Promise<ExchangeQuota | SdkException> {
+  public async createQuotaFromRoute(from: Address, route: SimulatedRoute, signal?: AbortSignal): Promise<ExchangeQuota | SdkException> {
     const request = this.routeToRequest(route)
     const converter = this.resolveConverter()
 
@@ -224,9 +226,12 @@ export default class SdkCore<Configuration extends SdkConfig = SdkConfig> extend
 
       if (!route) return new SdkException("Route not selected", SdkExceptionCode.InvalidRequest)
 
-      const singleChainTransactions = await converter.createSingleChainTransaction(from, route, this.currentTask)
+      if (signal?.aborted) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
+
+      const singleChainTransactions = await converter.createSingleChainTransaction(from, this.routeToRequest(route), route, this.currentTask, signal)
 
       if (singleChainTransactions instanceof SdkException) return singleChainTransactions
+      if (signal?.aborted) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 
       return singleChainTransactions
     }
