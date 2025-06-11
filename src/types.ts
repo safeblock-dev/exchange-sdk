@@ -195,6 +195,8 @@ export interface ExchangeRequest {
   destinationAddress?: Address
   /** Native currency amount for the arrival‑gas function */
   arrivalGasAmount?: Amount
+  /** Smart routing switch */
+  smartRouting?: boolean
 }
 
 /**

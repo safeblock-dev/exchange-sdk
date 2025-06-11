@@ -177,6 +177,8 @@ export default class EvmConverter extends ExchangeConverter {
     this.sdkConfig.debugLogListener?.(`Fetch: Fetching routes using following endpoint: ${ (request.exactInput && request.tokensOut.length === 1 && request.tokenIn.network.chainId.toString() === "56") ? "/exp/routes" : "/routes" }`)
     this.sdkConfig.debugLogListener?.(`Fetch: Route fetch parameters: exactInput=${ request.exactInput ? "true" : "false" }, tokensLength=${ request.tokensOut.length === 1 }, inputNetwork=${ request.tokenIn.network.chainId.toString() }, amountIn=${ request.amountIn.toString() }`)
 
+    const smartRoutingAvailable = request.exactInput && request.tokensOut.length === 1 && request.smartRouting === true
+
     const routes = (await Promise.all(
       request.tokensOut.map(tokenOut => (
         getExchangeRoutes({
@@ -187,7 +189,7 @@ export default class EvmConverter extends ExchangeConverter {
           limit: this.sdkConfig.routesCountLimit ?? 3,
           fromToken: request.tokenIn,
           toToken: tokenOut,
-          amountInRaw: (request.exactInput && request.tokensOut.length === 1 && request.tokenIn.network.chainId.toString() === "56") ? request.amountIn.toString() : undefined
+          amountInRaw: smartRoutingAvailable ? request.amountIn.toString() : undefined
         })
       ))
     ))
@@ -202,7 +204,7 @@ export default class EvmConverter extends ExchangeConverter {
     if (routesCount === 0) return new SdkException("Routes not found", SdkExceptionCode.RoutesNotFound)
 
     let simulatedRoute: SimulatedRoute | SdkException
-    if (request.exactInput && request.tokensOut.length === 1 && request.tokenIn.network.chainId.toString() === "56") {
+    if (smartRoutingAvailable) {
       if (!routes[0].percents) return new SdkException("Route percents for part swap not found", SdkExceptionCode.RoutesNotFound)
 
       simulatedRoute = await simulateNextRoutes({
