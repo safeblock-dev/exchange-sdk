@@ -8,9 +8,9 @@ import SdkException from "~/sdk/sdk-exception"
 export default abstract class ExchangeConverter {
   protected constructor(public sdkInstance: SdkCore) {}
 
-  public abstract fetchRoute(request: ExchangeRequest, taskId: symbol): Promise<SdkException | SimulatedRoute>
+  public abstract fetchRoute(request: ExchangeRequest, taskId: symbol, signal?: AbortSignal): Promise<SdkException | SimulatedRoute>
 
-  public abstract createSingleChainTransaction(from: Address, route: SimulatedRoute, taskId: symbol): Promise<SdkException | ExchangeQuota>
+  public abstract createSingleChainTransaction(from: Address, request: ExchangeRequest, route: SimulatedRoute, taskId: symbol): Promise<SdkException | ExchangeQuota>
 
   public abstract createMultiChainTransaction(from: Address, request: ExchangeRequest, taskId: symbol): Promise<SdkException | ExchangeQuota>
 
