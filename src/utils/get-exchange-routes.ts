@@ -14,6 +14,7 @@ interface Options {
   limit?: number
   bannedDexIds?: string[]
   headers?: Record<string, string>
+  routeCacheTime?: number
 
   amountInRaw?: string
   epsilon?: number
@@ -54,7 +55,7 @@ export default async function getExchangeRoutes(options: Options): Promise<{ rou
       }
     }).catch(() => null)
 
-    if (rawRoutes) routesCache.set(routeKey, rawRoutes, 3_600_000)
+    if (rawRoutes) routesCache.set(routeKey, rawRoutes, options.routeCacheTime || (1000 * 30))
   }
 
   if (!rawRoutes) return { routes: [], percents: [] }
