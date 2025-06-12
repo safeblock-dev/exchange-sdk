@@ -183,6 +183,7 @@ export default class EvmConverter extends ExchangeConverter {
       request.tokensOut.map(tokenOut => (
         getExchangeRoutes({
           signal,
+          routeCacheTime: this.sdkConfig.backend?.cacheTime,
           backendUrl: this.sdkConfig.backend?.url ?? publicBackendURL,
           headers: this.sdkConfig.backend?.headers,
           bannedDexIds: this.sdkInstance.dexBlacklist.toArray(),

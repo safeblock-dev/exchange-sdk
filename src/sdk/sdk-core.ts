@@ -97,6 +97,12 @@ export type SdkConfig = Partial<{
   backend: {
     url: string
     headers?: Record<string, string>
+
+    /**
+     * Routes query cache lifetime in ms
+     * @default 30_000
+     */
+    cacheTime?: number
   }
 }>
 
