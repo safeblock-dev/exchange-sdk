@@ -1,4 +1,5 @@
 import { Address, Amount, arrayUtils, ethersProvider } from "@safeblock/blockchain-utils"
+import BigNumber from "bignumber.js"
 import { WrappedToken__factory } from "~/abis/types"
 import { contractAddresses, publicBackendURL } from "~/config"
 import { PriceStorageExtension } from "~/extensions"
@@ -9,10 +10,11 @@ import { ExchangeUtils } from "~/sdk/exchange-utils"
 import SdkCore, { SdkConfig } from "~/sdk/sdk-core"
 import SdkException, { SdkExceptionCode } from "~/sdk/sdk-exception"
 import { SdkMixins } from "~/sdk/sdk-mixins"
-import simulateNextRoutes from "~/sdk/simulate-next-routes"
 import simulateRoutes from "~/sdk/simulate-routes"
-import { ExchangeQuota, ExchangeRequest, ExecutorCallData, SimulatedRoute } from "~/types"
+import { BackendResponse, ExchangeQuota, ExchangeRequest, ExecutorCallData, SimulatedRoute } from "~/types"
+import convertExperimentalToRoute from "~/utils/convert-experimental-to-route"
 import getExchangeRoutes from "~/utils/get-exchange-routes"
+import { default as httpRequest } from "~/utils/request"
 
 interface RawTransactionConverterOptions {
   from: Address
@@ -179,6 +181,35 @@ export default class EvmConverter extends ExchangeConverter {
     this.sdkConfig.debugLogListener?.(`Fetch: Fetching routes using following endpoint: ${ smartRoutingAvailable ? "/exp/routes" : "/routes" }`)
     this.sdkConfig.debugLogListener?.(`Fetch: Route fetch parameters: exactInput=${ request.exactInput ? "true" : "false" }, tokensLength=${ request.tokensOut.length === 1 }, inputNetwork=${ request.tokenIn.network.chainId.toString() }, amountIn=${ request.amountIn.toString() }`)
 
+    if (smartRoutingAvailable) {
+      // override
+
+      const routingResponse = await httpRequest<BackendResponse.IExperimentalRoutingResponse>({
+        base: this.sdkConfig.backend?.url ?? publicBackendURL,
+        path: "/exp/routes",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        signal,
+        method: "POST",
+        body: {
+          token_in: request.tokenIn.address.toString(),
+          token_out: request.tokensOut[0].address.toString(),
+          amount: request.amountIn.toString(),
+          network: request.tokenIn.network.chainId.toString(),
+          banned_dex_ids: this.sdkInstance.dexBlacklist.toArray(),
+          slippage: new BigNumber(request.slippageReadablePercent).shiftedBy(-2).toNumber()
+        }
+      })
+
+      if (signal?.aborted) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
+
+      if (routingResponse)
+        return convertExperimentalToRoute(this.sdkInstance, request, routingResponse)
+
+      this.sdkConfig.debugLogListener?.(`Fetch: Failed to retrieve experimental routing, proceed with the regular route fetching`)
+    }
+
     const routes = (await Promise.all(
       request.tokensOut.map(tokenOut => (
         getExchangeRoutes({
@@ -204,29 +235,15 @@ export default class EvmConverter extends ExchangeConverter {
 
     if (routesCount === 0) return new SdkException("Routes not found", SdkExceptionCode.RoutesNotFound)
 
-    let simulatedRoute: SimulatedRoute | SdkException
-    if (smartRoutingAvailable) {
-      if (!routes[0].percents) return new SdkException("Route percents for part swap not found", SdkExceptionCode.RoutesNotFound)
+    const limitedRoutes = routes.map(r => r.routes.slice(0, this.sdkConfig.routesCountHardLimit ?? 40))
 
-      simulatedRoute = await simulateNextRoutes({
+    const simulatedRoute = this.mixins.getMixinApplicator("internal")
+      .applyMixin("fetchRoute", "receivedFinalizedRoute", await simulateRoutes(
         request,
-        sdkInstance: this.sdkInstance,
-        config: this.sdkConfig,
-        percents: routes[0].percents,
-        route: routes[0].routes
-      }) as any as SimulatedRoute
-    }
-    else {
-      const limitedRoutes = routes.map(r => r.routes.slice(0, this.sdkConfig.routesCountHardLimit ?? 40))
-
-      simulatedRoute = this.mixins.getMixinApplicator("internal")
-        .applyMixin("fetchRoute", "receivedFinalizedRoute", await simulateRoutes(
-          request,
-          limitedRoutes,
-          this.sdkConfig,
-          this.sdkInstance
-        ))
-    }
+        limitedRoutes,
+        this.sdkConfig,
+        this.sdkInstance
+      ))
 
     if (signal?.aborted) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
     if (simulatedRoute instanceof SdkException) return simulatedRoute

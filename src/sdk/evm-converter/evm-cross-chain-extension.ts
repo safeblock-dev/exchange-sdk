@@ -8,10 +8,9 @@ import { SdkConfig } from "~/sdk"
 import evmBuildRawTransaction from "~/sdk/evm-converter/evm-build-raw-transaction"
 import EvmConverter from "~/sdk/evm-converter/evm-converter"
 import { ExchangeUtils } from "~/sdk/exchange-utils"
-import { SdkMixins } from "~/sdk/sdk-mixins"
-import { ExchangeQuota, ExchangeRequest, ExecutorCallData, SimulatedRoute } from "~/types"
 import SdkException, { SdkExceptionCode } from "~/sdk/sdk-exception"
-import { BasicToken } from "~/types"
+import { SdkMixins } from "~/sdk/sdk-mixins"
+import { BasicToken, ExchangeQuota, ExchangeRequest, ExecutorCallData, SimulatedRoute } from "~/types"
 
 interface IBuildCrossChainTransactionOptions {
   sourceChainRoute: SimulatedRoute | null
@@ -126,7 +125,7 @@ export default class EvmCrossChainExtension {
 
       const sourceChainRoutes = await this.parent.fetchRoute(ExchangeUtils.updateRequest(request, {
         tokensOut: [fromNetworkUSDC],
-        amountOutReadablePercentages: [100],
+        amountOutReadablePercentages: [100]
       }), taskId)
 
       if (!this.parent.sdkInstance.verifyTask(taskId)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
@@ -212,7 +211,7 @@ export default class EvmCrossChainExtension {
     }
 
     if (destinationChainRoute) {
-      const destinationChainSwapData = await evmBuildRawTransaction(from, request, destinationChainRoute, this.mixins, this.sdkConfig)
+      const destinationChainSwapData = await evmBuildRawTransaction(from, request, destinationChainRoute, this.mixins, this.sdkConfig, true)
 
       if (!this.parent.sdkInstance.verifyTask(taskId)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 
@@ -266,8 +265,6 @@ export default class EvmCrossChainExtension {
         bridgeIface.encodeFunctionData("sendStargateV2", [
           contractAddresses.stargateUSDCPool(request.tokenIn.network),
           stargateNetworksMapping(request.tokensOut[0].network),
-          !Address.equal(request.tokenIn.address, fromNetworkUSDC.address) ? 0 : Amount
-            .select(sourceChainRoute?.amountIn!, sourceNetworkSendAmount)!.toString(),
           destinationNetworkCallData
             ? contractAddresses.entryPoint(request.tokensOut[0].network, this.sdkConfig)
             : (request.destinationAddress || from || Address.zeroAddress).toString(),
@@ -330,7 +327,11 @@ export default class EvmCrossChainExtension {
     }
 
     executorCallData.push(mixin.applyMixin("multiCallTransactionRequest", {
-      callData: entryPointIface.encodeFunctionData("multicall", [
+      callData: entryPointIface.encodeFunctionData("multicall((address[],uint256[]),bytes[])", [
+        {
+          tokens: [request.tokenIn.address.toString()],
+          amounts: [request.amountIn.toString()]
+        },
         sourceNetworkCallData
       ]),
       gasLimitMultiplier: 1.2,

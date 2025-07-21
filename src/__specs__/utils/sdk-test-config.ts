@@ -1,5 +1,5 @@
 import { Address, base, bnb, mainnet, matic } from "@safeblock/blockchain-utils"
-import { TokensListExtension, PriceStorageExtension } from "~/extensions"
+import { PriceStorageExtension, TokensListExtension } from "~/extensions"
 import { SdkConfig } from "~/sdk"
 import { BasicToken } from "~/types"
 

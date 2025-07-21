@@ -169,7 +169,7 @@ export default async function simulateRoutes(
   config.debugLogListener?.(`Simulate: Starting parallel simulation of ${ routes.flat(3).length } routes for ${ request.tokensOut.length } tokens...`)
   const at = Date.now()
 
-  const eachTokenRawOutputs = await Promise.all(
+  const eachTokenRawOutputs = (await Promise.all(
     request.tokensOut.map((tokenOut, index) => (
       simulateSingeOutputRoutes({
         config,
@@ -182,7 +182,7 @@ export default async function simulateRoutes(
         tokenOut: tokenOut
       })
     ))
-  )
+  ))
 
   eachTokenRawOutputs.forEach((tokenOutput, index) => {
     const addr = request.tokensOut[index].address.toString().slice(0, 10)

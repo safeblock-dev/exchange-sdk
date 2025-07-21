@@ -40,7 +40,7 @@ export default async function getExchangeRoutes(options: Options): Promise<{ rou
   else {
     rawRoutes = await request<BackendResponse.IRoutesResponse | BackendResponse.IRoutesResponseNext>({
       base: backendUrl,
-      path: options.amountInRaw ? "/exp/routes" : "/routes",
+      path: "/routes",
       headers,
       signal: options.signal,
       query: {

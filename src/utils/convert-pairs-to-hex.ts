@@ -1,10 +1,14 @@
 import { exchangeConstants } from "~/config"
 import { RouteStep } from "~/types"
 
-export default function convertPairsToHex(route: RouteStep[]) {
+
+export default function convertPairsToHex(route: RouteStep[], splitPairSteps: true): string[][]
+export default function convertPairsToHex(route: RouteStep[]): string[]
+
+export default function convertPairsToHex(route: RouteStep[], splitPairSteps = false) {
   if (route.length === 0) return []
 
-  return route.map(i => {
+  const result = route.map(i => {
     const address = i.address.toString().slice(2)
 
     const version = exchangeConstants.versionsMap[i.version]
@@ -19,4 +23,8 @@ export default function convertPairsToHex(route: RouteStep[]) {
 
     return `0x${ version }${ emptySpace }${ isSolidly }${ fee }${ address }`
   })
+
+  if (!splitPairSteps) return result
+
+  return result.map(i => [i])
 }

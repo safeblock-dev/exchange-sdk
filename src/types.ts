@@ -16,6 +16,18 @@ export namespace BackendResponse {
     version: string
   }
 
+  export interface IExperimentalRoutingResponse {
+    amount_in: string
+    amount_out: string
+    calldata: {
+      tokens_in: string[],
+      tokens_out: string[],
+      min_amounts_out: string[],
+      pairs: string[][]
+    }
+    exchanges: string[]
+  }
+
   interface IBackendToken {
     id: string
     address: string
@@ -80,6 +92,11 @@ export interface SimulatedRoute {
   amountIn: Amount
   amountsOut: Amount[]
   amountOutReadablePercentages: number[]
+
+  smartRoutingDetails?: {
+    callData: string
+    exchangeIds: string[]
+  }
 
   slippageReadablePercent: number
 
