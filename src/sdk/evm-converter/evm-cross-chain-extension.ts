@@ -1,8 +1,8 @@
 import { Address, Amount, arrayUtils } from "@safeblock/blockchain-utils"
 import BigNumber from "bignumber.js"
-import { AbiCoder, toUtf8Bytes } from "ethers"
-import { BridgeFaucet__factory, Entrypoint__factory, TransferFaucet__factory } from "~/abis/types"
-import { contractAddresses, stargateNetworksMapping } from "~/config"
+import { AbiCoder } from "ethers"
+import { Entrypoint__factory, TransferFaucet__factory } from "~/abis/types"
+import { contractAddresses } from "~/config"
 import { PriceStorageExtension } from "~/extensions"
 import { SdkConfig } from "~/sdk"
 import evmBuildRawTransaction from "~/sdk/evm-converter/evm-build-raw-transaction"
@@ -12,6 +12,7 @@ import { SdkMixins } from "~/sdk/sdk-mixins"
 import { ExchangeQuota, ExchangeRequest, ExecutorCallData, SimulatedRoute } from "~/types"
 import SdkException, { SdkExceptionCode } from "~/sdk/sdk-exception"
 import { BasicToken } from "~/types"
+import fetchBridgingCalldata from "~/utils/fetch-bridging-calldata"
 
 interface IBuildCrossChainTransactionOptions {
   sourceChainRoute: SimulatedRoute | null
@@ -126,7 +127,7 @@ export default class EvmCrossChainExtension {
 
       const sourceChainRoutes = await this.parent.fetchRoute(ExchangeUtils.updateRequest(request, {
         tokensOut: [fromNetworkUSDC],
-        amountOutReadablePercentages: [100],
+        amountOutReadablePercentages: [100]
       }), taskId)
 
       if (!this.parent.sdkInstance.verifyTask(taskId)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
@@ -182,7 +183,6 @@ export default class EvmCrossChainExtension {
     this.sdkConfig.debugLogListener?.("Build: Preparing for cross-chain transaction final build")
 
     const transferFaucetIface = TransferFaucet__factory.createInterface()
-    const bridgeIface = BridgeFaucet__factory.createInterface()
     const entryPointIface = Entrypoint__factory.createInterface()
     let nativeAmount = new BigNumber(0)
 
@@ -230,20 +230,8 @@ export default class EvmCrossChainExtension {
     }
 
     this.sdkConfig.debugLogListener?.("Build: Computing bridge quota")
-    const bridgeQuota = await ExchangeUtils.computeBridgeQuota(
-      request,
-      from,
-      sourceNetworkSendAmount.toBigNumber().toFixed(0),
-      destinationChainRoute?.originalRouteSet.flat(1).length ?? 0,
-      destinationNetworkCallData,
-      this.sdkConfig
-    )
 
     if (!this.parent.sdkInstance.verifyTask(taskId)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
-
-    if (bridgeQuota instanceof SdkException) return bridgeQuota
-
-    nativeAmount = nativeAmount.plus(bridgeQuota.valueToSend.toString())
 
     const arrivalGas = await ExchangeUtils.computeArrivalGasData(request, from, this.sdkConfig)
 
@@ -261,21 +249,22 @@ export default class EvmCrossChainExtension {
       sourceChainRoute ? sourceChainRoute.tokensOut.map(t => t.address.toString()) : [fromNetworkUSDC.address.toString()]
     ]))
 
-    sourceNetworkCallData.push(
-      mixin.applyMixin("stargateSendV2CallData", (
-        bridgeIface.encodeFunctionData("sendStargateV2", [
-          contractAddresses.stargateUSDCPool(request.tokenIn.network),
-          stargateNetworksMapping(request.tokensOut[0].network),
-          !Address.equal(request.tokenIn.address, fromNetworkUSDC.address) ? 0 : Amount
-            .select(sourceChainRoute?.amountIn!, sourceNetworkSendAmount)!.toString(),
-          destinationNetworkCallData
-            ? contractAddresses.entryPoint(request.tokensOut[0].network, this.sdkConfig)
-            : (request.destinationAddress || from || Address.zeroAddress).toString(),
-          destinationNetworkCallData ? (450_000 + (150_000 * (destinationChainRoute?.originalRouteSet.flat(1).length ?? 0))) : 0,
-          destinationNetworkCallData || toUtf8Bytes("")
-        ])
-      ))
-    )
+    const bridgingDetails = await fetchBridgingCalldata({
+      senderAddress: from,
+      request,
+      destinationChainRoute,
+      destinationNetworkCallData,
+      sdkConfig: this.sdkConfig,
+      sourceChainRoute,
+      sourceNetworkSendAmount
+    })
+
+    if (bridgingDetails instanceof SdkException) return bridgingDetails
+
+    sourceNetworkCallData.push(mixin.applyMixin("bridgeTransactionCallData", bridgingDetails.bridgeCallData))
+    nativeAmount = nativeAmount.plus(mixin.applyMixin("bridgeTransactionNativeAmount", bridgingDetails.valueToSend.toString()))
+
+    bridgingDetails.bridgeName
 
     sourceNetworkCallData.push(mixin.applyMixin("transferDataEncoded", transferData))
 
@@ -373,6 +362,7 @@ export default class EvmCrossChainExtension {
     this.sdkConfig.debugLogListener?.(`Build: amountOut -> from ${ request.amountsOut.map(a => a.toReadable()).join(",") } to ${ correctedAmountsOut.map(a => a.toReadable()).join(",") }`)
 
     const rawQuota: Omit<ExchangeQuota, "estimatedGasUsage"> = {
+      thirdPartyBridge: bridgingDetails.bridgeName,
       executorCallData,
       exchangeRoute: arrayUtils.nonNullable([sourceChainRoute?.originalRouteSet, destinationChainRoute?.originalRouteSet]),
       amountsOut: correctedAmountsOut,

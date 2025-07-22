@@ -104,6 +104,13 @@ export type SdkConfig = Partial<{
      */
     cacheTime?: number
   }
+
+  /**
+   * Custom backend URL and headers for bridge aggregation
+   *
+   * _Stargate will be used if not provided_
+   */
+  bridgeAggregationBackend?: SdkConfig["backend"]
 }>
 
 /**
