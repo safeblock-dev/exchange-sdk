@@ -1,4 +1,4 @@
-import { Address, Amount, arrayUtils, multicall, MultiCallRequest } from "@safeblock/blockchain-utils"
+import { Address, Amount, arrayUtils, multicall, MultiCallRequest, units } from "@safeblock/blockchain-utils"
 import { Network } from "ethers"
 import { OffchainOracle__factory } from "~/abis/types"
 import { contractAddresses } from "~/config"
@@ -242,7 +242,13 @@ export default class PriceStorageExtension extends SdkExtension {
     if (task !== this.#currentFetchingTask) return
 
     const usdcRate = rates.find((r) => Address.equal(r.token.address, usdc.address))?.rate
-    if (!usdcRate) return
+    if (!usdcRate) {
+      if (network.name === units.name) {
+        this._prices.get(network.name)?.set(usdc.address.toString().toLowerCase(), BigInt(1e6))
+      }
+
+      return
+    }
 
     rates.forEach((rate) => {
       if (Address.equal(rate.token.address, usdc.address)) {
