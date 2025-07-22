@@ -1,4 +1,4 @@
-import { Address, base, bnb, mainnet, matic } from "@safeblock/blockchain-utils"
+import { Address, base, bnb, mainnet, matic, units } from "@safeblock/blockchain-utils"
 import { PriceStorageExtension, TokensListExtension } from "~/extensions"
 import { SdkConfig } from "~/sdk"
 import { BasicToken } from "~/types"
@@ -99,11 +99,18 @@ export const bnbCAKE = {
   network: bnb
 }
 
+export const unitsUSDC = {
+  address: Address.from("0xEb19000D90f17FFbd3AD9CDB8915D928F4980fD1"),
+  decimals: 6,
+  network: units
+}
+
 const tokensListExtensionConfig: Record<string, BasicToken[]> = {
   [bnb.name]: [bnbUSDT, bnbDAI, bnbDOGE, bnbUSDC, bnbWBNB, bnbBNB, bnbCAKE],
   [matic.name]: [maticUSDC, maticUSDT, maticMATIC, maticWMATIC],
   [mainnet.name]: [mainnetUSDT, mainnetETH, mainnetUSDC],
-  [base.name]: [baseWETH, baseUSDC]
+  [base.name]: [baseWETH, baseUSDC],
+  [units.name]: [unitsUSDC]
 }
 
 const sdkConfig: SdkConfig = {

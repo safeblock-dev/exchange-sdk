@@ -2,6 +2,20 @@ import { Address, Amount } from "@safeblock/blockchain-utils"
 import { Network } from "ethers"
 
 export namespace BackendResponse {
+  export type UnitsAPIResponse = {
+    args: [
+      string[],
+      string[],
+      {
+        executionPrice: string
+        deadline: string
+        v: number
+        r: string
+        s: string
+      }
+    ]
+  }
+
   export interface IBackendRouteStep {
     address: Address
     exchange_id: string
