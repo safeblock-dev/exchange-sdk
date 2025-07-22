@@ -1,16 +1,17 @@
-import { arbitrum, avalanche, bnb, mainnet, optimism, matic, base, scroll, gnosis } from "@safeblock/blockchain-utils"
-import { selectAddress } from "@safeblock/blockchain-utils"
+import { arbitrum, avalanche, base, bnb, gnosis, mainnet, matic, optimism, scroll, selectAddress, units } from "@safeblock/blockchain-utils"
 import { Network } from "ethers"
 import { SdkConfig } from "~/sdk"
 
 
 const contractAddresses = {
   entryPoint: (network: Network, config?: SdkConfig) => selectAddress(network, config?.contractAddresses?.entryPoint ?? {
-    default: "0x07eA307c40599915177b8d0c2EF0F67871Ba4652"
+    default: "0x07eA307c40599915177b8d0c2EF0F67871Ba4652",
+    [units.name]: "0xA26c8aC451d9EBbd4B40e8D2Ed91f5c55b989001"
   }),
 
   quoter: (network: Network, config?: SdkConfig) => selectAddress(network, config?.contractAddresses?.quoter ?? {
-    default: "0x13e6aC30fC8E37792F18b1e3D75B8266B0A93734"
+    default: "0x13e6aC30fC8E37792F18b1e3D75B8266B0A93734",
+    [units.name]: "0xdF735aCD459014f793E3E7d27F5C598381E23A21"
   }),
 
   offchainOracle: (network: Network) => selectAddress(network, {
@@ -39,6 +40,7 @@ const contractAddresses = {
     [base.name]: { address: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", decimals: 6 },
     [scroll.name]: { address: "0x06eFdBFf2a14a7c8E15944D1F4A48F9F95F663A4", decimals: 6 },
     [gnosis.name]: { address: "0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0", decimals: 6 },
+    [units.name]: { address: "0xEb19000D90f17FFbd3AD9CDB8915D928F4980fD1", decimals: 6 },
     default: { address: "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d", decimals: 18 }
   }),
 
@@ -68,7 +70,7 @@ function stargateNetworksMapping(network: Network) {
     [optimism.name]: 30111,
     [base.name]: 30184,
     [scroll.name]: 30214,
-    [gnosis.name]: 30145,
+    [gnosis.name]: 30145
   }
 
   return map[network.name] ?? -1
