@@ -76,13 +76,13 @@ const maticUSDT = {
 }
 
 const maticWMATIC = {
-  address: Address.from(Address.wrappedOf(matic)),
+  address: Address.wrappedOf(matic),
   decimals: 18,
   network: matic
 }
 
 const bnbWBNB = {
-  address: Address.from(Address.wrappedOf(bnb)),
+  address: Address.wrappedOf(bnb),
   decimals: 18,
   network: bnb
 }

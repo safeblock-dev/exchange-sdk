@@ -20,8 +20,6 @@ export default async function evmBuildRawTransaction(from: Address, request: Exc
   let multiSwapData: string
   let amountIn: Amount = request.amountIn
 
-  const replaceZero = (address: string | Address) => Address.equal(address, Address.zeroAddress) ? Address.wrappedOf(request.tokenIn.network) : Address.from(address)
-
   if (route.smartRoutingDetails && route.tokensOut.length === 1) multiSwapData = route.smartRoutingDetails.callData
   else {
     if (route.isExactInput || route.tokensOut.length > 1) {
@@ -30,7 +28,7 @@ export default async function evmBuildRawTransaction(from: Address, request: Exc
           fullAmount: route.amountIn.toBigInt(),
           amountInPercentages: route.estimatedPartialPercents || adjustPercentages(route.amountOutReadablePercentages),
           minAmountsOut: route.amountsOut.map((amount, index) => {
-            if (route.originalRouteSet[index].length === 0) return "0" // Tokens transfer only
+            if (route.originalRouteSet[index].length === 0) return "0"
 
             return new BigNumber(100)
               .minus(route.slippageReadablePercent ?? 1)
@@ -38,8 +36,8 @@ export default async function evmBuildRawTransaction(from: Address, request: Exc
               .div(100)
               .toFixed(0)
           }),
-          tokenIn: replaceZero(route.tokenIn.address).toString(),
-          tokensOut: route.tokensOut.map(token => replaceZero(token.address).toString()),
+          tokenIn: Address.requireWrapped(route.tokenIn.address, route.tokenIn.network).toString(),
+          tokensOut: route.tokensOut.map(token => Address.requireWrapped(token.address, token.network).toString()),
           pairs: pairsHex
         }
       ])
@@ -47,12 +45,10 @@ export default async function evmBuildRawTransaction(from: Address, request: Exc
     else {
       const quoterResponse = await quoterInstance.multiswap2Reverse({
         fullAmount: "0",
-        amountInPercentages: route.tokensOut.map(token => token.address.equalTo(Address.zeroAddress)
-          ? Address.wrappedOf(token.network)
-          : token.address.toString()),
+        amountInPercentages: route.tokensOut.map(token => Address.requireWrapped(token.address, token.network).toString()),
         minAmountsOut: request.amountsOut.map(amount => amount.toString()),
-        tokenIn: replaceZero(route.tokenIn.address).toString(),
-        tokensOut: route.tokensOut.map(token => replaceZero(token.address).toString()),
+        tokenIn: Address.requireWrapped(route.tokenIn.address, route.tokenIn.network).toString(),
+        tokensOut: route.tokensOut.map(token => Address.requireWrapped(token.address, token.network).toString()),
         pairs: pairsHex
       })
 
@@ -64,8 +60,8 @@ export default async function evmBuildRawTransaction(from: Address, request: Exc
       multiSwapData = multiSwapIface.encodeFunctionData("multiswapReverse", [
         {
           pairs: pairsHex,
-          tokensIn: [replaceZero(route.tokenIn.address).toString()],
-          tokensOut: route.tokensOut.map(token => replaceZero(token.address).toString()),
+          tokensIn: [Address.requireWrapped(route.tokenIn.address, route.tokenIn.network).toString()],
+          tokensOut: route.tokensOut.map(token => Address.requireWrapped(token.address, token.network).toString()),
           amountsOut: request.amountsOut.map(amount => amount.toString())
         }
       ])

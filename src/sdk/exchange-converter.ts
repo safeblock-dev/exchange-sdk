@@ -2,8 +2,8 @@ import { Address, Amount } from "@safeblock/blockchain-utils"
 import { PriceStorageExtension } from "~/extensions"
 import { ExchangeUtils } from "~/sdk/exchange-utils"
 import SdkCore from "~/sdk/sdk-core"
-import { ExchangeQuota, ExchangeRequest, SimulatedRoute } from "~/types"
 import SdkException from "~/sdk/sdk-exception"
+import { ExchangeQuota, ExchangeRequest, SimulatedRoute } from "~/types"
 
 export default abstract class ExchangeConverter {
   protected constructor(public sdkInstance: SdkCore) {}
@@ -40,12 +40,12 @@ export default abstract class ExchangeConverter {
       ...request,
       originalRouteSet: [[{
         exchange_id: "MockBridgeId",
-        address: Address.from(Address.zeroAddress),
+        address: Address.zeroAddress,
         fee: 0,
         fee_type: "none",
         version: "V0",
         token0: request.tokenIn,
-        token1: request.tokensOut[0],
+        token1: request.tokensOut[0]
       }]],
       amountIn,
       amountsOut,

@@ -133,6 +133,8 @@ export interface ExchangeRequest {
   arrivalGasAmount?: Amount
   /** Smart routing switch */
   smartRouting?: boolean
+  /** Precision of the smart routing. 1-100 */
+  smartRoutingPrecision?: number
 }
 
 /**

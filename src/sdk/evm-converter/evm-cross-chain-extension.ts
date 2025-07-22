@@ -291,7 +291,7 @@ export default class EvmCrossChainExtension {
       resetRequired
     } = await ExchangeUtils.getTokenTransferDetails(
       request.tokenIn,
-      from || Address.from(Address.zeroAddress),
+      from || Address.zeroAddress,
       request.amountIn,
       this.sdkConfig
     )

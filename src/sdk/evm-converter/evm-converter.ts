@@ -172,7 +172,7 @@ export default class EvmConverter extends ExchangeConverter {
 
     if (signal?.aborted) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 
-    const alternativeRoute = await this.rerouteCrossChainRoutesFetch(request, Address.from(Address.zeroAddress), taskId)
+    const alternativeRoute = await this.rerouteCrossChainRoutesFetch(request, Address.zeroAddress, taskId)
 
     if (alternativeRoute !== null) return alternativeRoute
 
@@ -193,12 +193,13 @@ export default class EvmConverter extends ExchangeConverter {
         signal,
         method: "POST",
         body: {
-          token_in: request.tokenIn.address.toString(),
-          token_out: request.tokensOut[0].address.toString(),
+          token_in: Address.requireWrapped(request.tokenIn.address, request.tokenIn.network).toString(),
+          token_out: Address.requireWrapped(request.tokensOut[0].address, request.tokensOut[0].network).toString(),
           amount: request.amountIn.toString(),
           network: request.tokenIn.network.chainId.toString(),
           banned_dex_ids: this.sdkInstance.dexBlacklist.toArray(),
-          slippage: new BigNumber(request.slippageReadablePercent).shiftedBy(-2).toNumber()
+          slippage: new BigNumber(request.slippageReadablePercent).shiftedBy(-2).toNumber(),
+          precision: request.smartRoutingPrecision ? Math.max(1, Math.min(100, request.smartRoutingPrecision)) : undefined
         }
       })
 
@@ -269,7 +270,7 @@ export default class EvmConverter extends ExchangeConverter {
     if (!Address.isZero(request.tokenIn.address) && !Address.isZero(request.tokensOut[0].address))
       return new SdkException("Not wrap unwrap", SdkExceptionCode.InvalidRequest)
 
-    const wrappedAddress = Address.from(Address.wrappedOf(request.tokenIn.network))
+    const wrappedAddress = Address.wrappedOf(request.tokenIn.network)
 
     if (!Address.isZero(request.tokenIn.address) && !Address.equal(request.tokenIn.address, wrappedAddress))
       return new SdkException("Not wrap unwrap", SdkExceptionCode.InvalidRequest)

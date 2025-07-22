@@ -51,13 +51,9 @@ async function simulateSingeOutputRoutes(options: Options): Promise<SingleOutput
     return route.map(r => r.address + r.exchange_id + r.token0.address.toString() + r.token1.address.toString()).join(":")
   }
 
-  const tokenInAddress = options.tokenIn.address.equalTo(Address.zeroAddress)
-    ? Address.wrappedOf(options.tokenIn.network)
-    : options.tokenIn.address.toString()
+  const tokenInAddress = Address.requireWrapped(options.tokenIn.address, options.tokenIn.network)
 
-  const tokenOutAddress = options.tokenOut.address.equalTo(Address.zeroAddress)
-    ? Address.wrappedOf(options.tokenOut.network)
-    : options.tokenOut.address.toString()
+  const tokenOutAddress = Address.requireWrapped(options.tokenOut.address, options.tokenOut.network)
 
   const calls: MultiCallRequest[] = options.routes.map(route => {
     const pairs = convertPairsToHex(route)
@@ -71,9 +67,9 @@ async function simulateSingeOutputRoutes(options: Options): Promise<SingleOutput
         methodParameters: [
           {
             minAmountOut: 0,
-            tokenIn: tokenInAddress,
+            tokenIn: tokenInAddress.toString(),
             pairs: pairs,
-            tokenOut: tokenOutAddress,
+            tokenOut: tokenOutAddress.toString(),
             amountIn: options.amountIn.toBigInt()
           }
         ]
@@ -86,7 +82,7 @@ async function simulateSingeOutputRoutes(options: Options): Promise<SingleOutput
         methodParameters: [
           {
             minAmountOut: 0,
-            tokenIn: tokenOutAddress,
+            tokenIn: tokenOutAddress.toString(),
             pairs,
             amountIn: options.amountOut.toBigInt()
           }

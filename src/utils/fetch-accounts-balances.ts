@@ -44,7 +44,7 @@ export async function fetchAccountBalances(of: Address, tokens: BasicToken[]): P
           calls: [
             {
               method: "getEthBalance",
-              reference: Address.zeroAddress,
+              reference: Address.zeroAddress.toString(),
               methodParameters: [of.toString()]
             }
           ]
