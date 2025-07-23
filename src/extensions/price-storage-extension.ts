@@ -1,4 +1,4 @@
-import { Address, Amount, multicall, MultiCallRequest } from "@safeblock/blockchain-utils"
+import { Address, Amount, arrayUtils, multicall, MultiCallRequest, units } from "@safeblock/blockchain-utils"
 import { Network } from "ethers"
 import { OffchainOracle__factory } from "~/abis/types"
 import { contractAddresses } from "~/config"
@@ -47,16 +47,6 @@ export default class PriceStorageExtension extends SdkExtension {
   #initialFetchFinished = false
   #forceRefetchTimeout: any
 
-  public onInitialize(): void {
-    this.waitInitialFetch(100).then(() => {
-      this.eventBus.emitEvent("onPriceStorageInitialLoadFinished")
-    })
-
-    this.requestPricesUpdate().finally(() => {
-      this.#initialFetchFinished = true
-    })
-  }
-
   /**
    * SDK extension that manages prices of registered tokens.
    *
@@ -80,6 +70,16 @@ export default class PriceStorageExtension extends SdkExtension {
     this.forceRefetch = this.forceRefetch.bind(this)
   }
 
+  public onInitialize(): void {
+    this.waitInitialFetch(100).then(() => {
+      this.eventBus.emitEvent("onPriceStorageInitialLoadFinished")
+    })
+
+    this.requestPricesUpdate().finally(() => {
+      this.#initialFetchFinished = true
+    })
+  }
+
   /**
    * Wait until the initial price update is complete. If prices were already
    * updated at least once, the promise resolves immediately.
@@ -98,97 +98,6 @@ export default class PriceStorageExtension extends SdkExtension {
         clearInterval(interval)
       }, pollingInterval)
     })
-  }
-
-  private async fetchTokenPrices(network: Network, task: Symbol) {
-    if (!this._prices.has(network.name)) this._prices.set(network.name, new Map())
-
-    const usdc = contractAddresses.usdcParams(network)
-    if (!usdc) return
-
-    const tokens = this.sdk.extension(TokensListExtension)
-      .list(network)
-      .filter(
-        (t) =>
-          !Address.isZero(t.address) &&
-          !Address.equal(t.address, Address.wrappedOf(network))
-      )
-
-    const requests: MultiCallRequest[] = tokens.map((token) => ({
-      target: Address.from(contractAddresses.offchainOracle(network)),
-      contractInterface: OffchainOracle__factory,
-      calls: [
-        {
-          method: "getRate",
-          reference: token.address.toString(),
-          methodParameters: [
-            token.address.toString(),
-            Address.wrappedOf(network),
-            false
-          ]
-        }
-      ]
-    }))
-
-    if (requests.length === 0) return
-
-    const batches: MultiCallRequest[][] = []
-    for (let i = 0; i < requests.length; i += 25) {
-      batches.push(requests.slice(i, i + 25))
-    }
-
-    const batchResults = await Promise.all(
-      batches.map((batch) => multicall<[bigint]>(network, batch))
-    )
-
-    const flatResponses = batchResults.flat()
-
-    const rates = flatResponses
-      .map((res) => {
-        if (!res.data || !res.data[0]) return null
-
-        const token = tokens.find((t) =>
-          Address.equal(t.address, res.reference ?? "")
-        )
-        if (!token) return null
-
-        const numerator = BigInt(10) ** BigInt(token.decimals)
-        const denominator = BigInt(10) ** BigInt(18)
-
-        return {
-          token,
-          rate: (BigInt(res.data[0].toString()) * numerator) / denominator
-        }
-      })
-      .filter(Boolean) as { token: BasicToken; rate: bigint }[]
-
-    if (task !== this.#currentFetchingTask) return
-
-    const usdcRate = rates.find((r) =>
-      Address.equal(r.token.address, usdc.address)
-    )?.rate
-    if (!usdcRate) return
-
-    const priceMap = this._prices.get(network.name)!
-
-    for (const { token, rate } of rates) {
-      if (Address.equal(token.address, usdc.address)) {
-        priceMap.set(
-          token.address.toString(),
-          BigInt(10 ** usdc.decimals)
-        )
-      }
-      else {
-        priceMap.set(
-          token.address.toString(),
-          (rate * BigInt(10 ** token.decimals)) / usdcRate
-        )
-      }
-    }
-
-    const nativeRate = (BigInt(1e18) * BigInt(1e18)) / usdcRate
-    priceMap.set(Address.wrappedOf(network), nativeRate)
-    priceMap.set(Address.zeroAddress, nativeRate)
   }
 
   /**
@@ -275,5 +184,83 @@ export default class PriceStorageExtension extends SdkExtension {
     if (!existingToken) return new Amount(0, 0, false)
 
     return Amount.from(this._prices.get(network.name)?.get(tokenAddress.toString()) ?? BigInt(0), existingToken.decimals, false)
+  }
+
+  private async fetchTokenPrices(network: Network, task: Symbol) {
+    if (!this._prices.has(network.name)) this._prices.set(network.name, new Map())
+
+    const usdc = contractAddresses.usdcParams(network)
+
+    if (!usdc) return
+
+    const requests: MultiCallRequest[] = this.sdk.extension(TokensListExtension)
+      .list(network)
+      .filter((token) => !Address.isZero(token.address) && !Address.wrappedOf(network).equalTo(token.address))
+      .map((token) => ({
+        target: Address.from(contractAddresses.offchainOracle(network)),
+        contractInterface: OffchainOracle__factory,
+        calls: [
+          {
+            method: "getRate",
+            reference: token.address.toString(),
+            methodParameters: [
+              token.address.toString(),
+              Address.wrappedOf(network).toString(),
+              false
+            ]
+          }
+        ]
+      }))
+
+    if (requests.length === 0) return
+
+    let rates = await arrayUtils.asyncNonNullable(
+      arrayUtils.asyncMap(
+        multicall<[BigInt]>(network, requests),
+        (response) => {
+          if (!response.data) return null
+
+          const token = this.sdk.extension(TokensListExtension)
+            .list(network)
+            .find((t) => Address.equal(t.address, response.reference ?? ""))
+
+          if (!token) return null
+
+          const numerator = BigInt(10) ** BigInt(token.decimals)
+          const denominator = BigInt(10) ** BigInt(18)
+
+          if (!response.data[0]) return null
+
+          return {
+            token: token,
+            rate: (BigInt(response.data[0].toString()) * numerator) / denominator
+          }
+        }
+      )
+    )
+
+    if (task !== this.#currentFetchingTask) return
+
+    const usdcRate = rates.find((r) => Address.equal(r.token.address, usdc.address))?.rate
+    if (!usdcRate) {
+      if (network.name === units.name) {
+        this._prices.get(network.name)?.set(usdc.address.toString().toLowerCase(), BigInt(1e6))
+      }
+
+      return
+    }
+
+    rates.forEach((rate) => {
+      if (Address.equal(rate.token.address, usdc.address)) {
+        this._prices.get(network.name)?.set(rate.token.address.toString(), BigInt(10 ** usdc.decimals))
+      }
+      else {
+        this._prices.get(network.name)?.set(rate.token.address.toString(), (rate.rate * BigInt(10 ** rate.token.decimals)) / usdcRate)
+      }
+    })
+
+    const nativeRate = (BigInt(1e18) * BigInt(1e18)) / usdcRate
+    this._prices.get(network.name)?.set(Address.wrappedOf(network).toString(), nativeRate)
+    this._prices.get(network.name)?.set(Address.zeroAddress.toString(), nativeRate)
   }
 }

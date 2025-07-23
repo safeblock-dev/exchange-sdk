@@ -1,4 +1,5 @@
 import { Address, Amount, arrayUtils, ethersProvider } from "@safeblock/blockchain-utils"
+import BigNumber from "bignumber.js"
 import { WrappedToken__factory } from "~/abis/types"
 import { contractAddresses, publicBackendURL } from "~/config"
 import { PriceStorageExtension } from "~/extensions"
@@ -9,10 +10,11 @@ import { ExchangeUtils } from "~/sdk/exchange-utils"
 import SdkCore, { SdkConfig } from "~/sdk/sdk-core"
 import SdkException, { SdkExceptionCode } from "~/sdk/sdk-exception"
 import { SdkMixins } from "~/sdk/sdk-mixins"
-import simulateNextRoutes from "~/sdk/simulate-next-routes"
 import simulateRoutes from "~/sdk/simulate-routes"
-import { ExchangeQuota, ExchangeRequest, ExecutorCallData, SimulatedRoute } from "~/types"
+import { BackendResponse, ExchangeQuota, ExchangeRequest, ExecutorCallData, SimulatedRoute } from "~/types"
+import convertExperimentalToRoute from "~/utils/convert-experimental-to-route"
 import getExchangeRoutes from "~/utils/get-exchange-routes"
+import { default as httpRequest } from "~/utils/request"
 
 interface RawTransactionConverterOptions {
   from: Address
@@ -95,7 +97,8 @@ export default class EvmConverter extends ExchangeConverter {
       tokensOut: options.route.tokensOut,
       slippageReadable: options.route.slippageReadablePercent,
       priceImpact: options.route.priceImpactPercents,
-      amountOutReadablePercentages: options.route.amountOutReadablePercentages
+      amountOutReadablePercentages: options.route.amountOutReadablePercentages,
+      smartRoutingEstimatedGasUsage: options.route.smartRoutingDetails?.gasUsage
     }
 
     return {
@@ -170,7 +173,7 @@ export default class EvmConverter extends ExchangeConverter {
 
     if (signal?.aborted) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 
-    const alternativeRoute = await this.rerouteCrossChainRoutesFetch(request, Address.from(Address.zeroAddress), taskId)
+    const alternativeRoute = await this.rerouteCrossChainRoutesFetch(request, Address.zeroAddress, taskId)
 
     if (alternativeRoute !== null) return alternativeRoute
 
@@ -178,6 +181,36 @@ export default class EvmConverter extends ExchangeConverter {
 
     this.sdkConfig.debugLogListener?.(`Fetch: Fetching routes using following endpoint: ${ smartRoutingAvailable ? "/exp/routes" : "/routes" }`)
     this.sdkConfig.debugLogListener?.(`Fetch: Route fetch parameters: exactInput=${ request.exactInput ? "true" : "false" }, tokensLength=${ request.tokensOut.length === 1 }, inputNetwork=${ request.tokenIn.network.chainId.toString() }, amountIn=${ request.amountIn.toString() }`)
+
+    if (smartRoutingAvailable) {
+      // override
+
+      const routingResponse = await httpRequest<BackendResponse.IExperimentalRoutingResponse>({
+        base: this.sdkConfig.backend?.url ?? publicBackendURL,
+        path: "/exp/routes",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        signal,
+        method: "POST",
+        body: {
+          token_in: Address.requireWrapped(request.tokenIn.address, request.tokenIn.network).toString(),
+          token_out: Address.requireWrapped(request.tokensOut[0].address, request.tokensOut[0].network).toString(),
+          amount: request.amountIn.toString(),
+          network: request.tokenIn.network.chainId.toString(),
+          banned_dex_ids: this.sdkInstance.dexBlacklist.toArray(),
+          slippage: new BigNumber(request.slippageReadablePercent).shiftedBy(-2).toNumber(),
+          precision: request.smartRoutingPrecision ? Math.max(1, Math.min(100, request.smartRoutingPrecision)) : undefined
+        }
+      })
+
+      if (signal?.aborted) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
+
+      if (routingResponse)
+        return convertExperimentalToRoute(this.sdkInstance, request, routingResponse)
+
+      this.sdkConfig.debugLogListener?.(`Fetch: Failed to retrieve experimental routing, proceed with the regular route fetching`)
+    }
 
     const routes = (await Promise.all(
       request.tokensOut.map(tokenOut => (
@@ -204,29 +237,15 @@ export default class EvmConverter extends ExchangeConverter {
 
     if (routesCount === 0) return new SdkException("Routes not found", SdkExceptionCode.RoutesNotFound)
 
-    let simulatedRoute: SimulatedRoute | SdkException
-    if (smartRoutingAvailable) {
-      if (!routes[0].percents) return new SdkException("Route percents for part swap not found", SdkExceptionCode.RoutesNotFound)
+    const limitedRoutes = routes.map(r => r.routes.slice(0, this.sdkConfig.routesCountHardLimit ?? 40))
 
-      simulatedRoute = await simulateNextRoutes({
+    const simulatedRoute = this.mixins.getMixinApplicator("internal")
+      .applyMixin("fetchRoute", "receivedFinalizedRoute", await simulateRoutes(
         request,
-        sdkInstance: this.sdkInstance,
-        config: this.sdkConfig,
-        percents: routes[0].percents,
-        route: routes[0].routes
-      }) as any as SimulatedRoute
-    }
-    else {
-      const limitedRoutes = routes.map(r => r.routes.slice(0, this.sdkConfig.routesCountHardLimit ?? 40))
-
-      simulatedRoute = this.mixins.getMixinApplicator("internal")
-        .applyMixin("fetchRoute", "receivedFinalizedRoute", await simulateRoutes(
-          request,
-          limitedRoutes,
-          this.sdkConfig,
-          this.sdkInstance
-        ))
-    }
+        limitedRoutes,
+        this.sdkConfig,
+        this.sdkInstance
+      ))
 
     if (signal?.aborted) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
     if (simulatedRoute instanceof SdkException) return simulatedRoute
@@ -252,7 +271,7 @@ export default class EvmConverter extends ExchangeConverter {
     if (!Address.isZero(request.tokenIn.address) && !Address.isZero(request.tokensOut[0].address))
       return new SdkException("Not wrap unwrap", SdkExceptionCode.InvalidRequest)
 
-    const wrappedAddress = Address.from(Address.wrappedOf(request.tokenIn.network))
+    const wrappedAddress = Address.wrappedOf(request.tokenIn.network)
 
     if (!Address.isZero(request.tokenIn.address) && !Address.equal(request.tokenIn.address, wrappedAddress))
       return new SdkException("Not wrap unwrap", SdkExceptionCode.InvalidRequest)

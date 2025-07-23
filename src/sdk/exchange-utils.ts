@@ -33,7 +33,7 @@ export class ExchangeUtils {
 
       config?.debugLogListener?.("ArrivalGas: Amount updated: " + amount.toBigNumber().toFixed())
 
-      const lzFee = await lzContract.estimateFee(stargateNetworksMapping(request.tokensOut[0].network), amount.toBigNumber().toFixed(), Address.zeroAddress)
+      const lzFee = await lzContract.estimateFee(stargateNetworksMapping(request.tokensOut[0].network), amount.toBigNumber().toFixed(), Address.zeroAddress.toString())
 
       config?.debugLogListener?.("ArrivalGas: LzFee get: " + lzFee.toString())
 
@@ -92,20 +92,6 @@ export class ExchangeUtils {
     }
   }
 
-  private static async getTokenResetRequiredStatus(token: BasicToken, spendAmount: Amount, ownerAddress: Address, config?: SdkConfig) {
-    const tokenIface = Token__factory.createInterface()
-    const _approve = tokenIface.encodeFunctionData("approve", [
-      contractAddresses.entryPoint(token.network, config),
-      spendAmount.toBigNumber().toFixed(0)
-    ])
-
-    const _estimation = await ethersProvider(token.network)
-      ?.estimateGas({ from: ownerAddress.toString(), to: token.address.toString(), data: _approve })
-      .catch(() => null)
-
-    return !_estimation
-  }
-
   public static isWrap(request: BasicRequest) {
     if (request.tokenIn.network.name !== request.tokensOut[0].network.name) return false
     if (request.tokensOut.length !== 1) return false
@@ -126,28 +112,6 @@ export class ExchangeUtils {
     return this.isWrap(request) || this.isUnwrap(request)
   }
 
-  private static computeOnchainTradeGasUsage(routeSet: RouteStep[][], receiveNativeCount = 0, mixinBuilder: SdkMixins) {
-    const mixin = mixinBuilder.getMixinApplicator("internal")
-      .getNamespaceApplicator("computeOnchainTradeGasUsage")
-
-    const uniswapV3StepGasUsage = mixin.applyMixin("uniswapV3StepGasUsage", 450_000)
-    const uniswapV2StepGasUsage = mixin.applyMixin("uniswapV2StepGasUsage", 300_000)
-    const receiveNativeGasUsage = mixin.applyMixin("receiveNativeGasUsage", 80_000)
-
-    let routeGasUsage = new BigNumber(mixin.applyMixin("routeInitialGasUsage", 100_000))
-
-    if (routeSet.length === 0) return routeGasUsage
-    routeSet.forEach(route => {
-      route.map(step => {
-        routeGasUsage = routeGasUsage.plus(step.version === "uniswap_v3" ? uniswapV3StepGasUsage : uniswapV2StepGasUsage)
-      })
-    })
-
-    if (receiveNativeCount > 0) routeGasUsage.plus(receiveNativeGasUsage * receiveNativeCount)
-
-    return routeGasUsage
-  }
-
   public static computeQuotaExecutionGasUsage(quota: Omit<ExchangeQuota, "estimatedGasUsage">, mixinBuilder: SdkMixins) {
     const mixin = mixinBuilder.getMixinApplicator("internal")
       .getNamespaceApplicator("computeQuotaExecutionGasUsage")
@@ -166,10 +130,10 @@ export class ExchangeUtils {
 
     const receiveNativeAmount = quota.tokensOut.filter(i => i.address.equalTo(Address.zeroAddress)).length
     if (quota.tokenIn.network.name === quota.tokensOut[0].network.name)
-      return { [quota.tokenIn.network.name]: Amount.from(this.computeOnchainTradeGasUsage(quota.exchangeRoute[0] ?? [], receiveNativeAmount, mixinBuilder), 18, true) }
+      return { [quota.tokenIn.network.name]: quota.smartRoutingEstimatedGasUsage ? Amount.from(quota.smartRoutingEstimatedGasUsage, 18, true) : Amount.from(this.computeOnchainTradeGasUsage(quota.exchangeRoute[0] ?? [], receiveNativeAmount, mixinBuilder), 18, true) }
 
-    const sourceChainExecutionGasUsage = this.computeOnchainTradeGasUsage(quota.exchangeRoute[0] ?? [], 0, mixinBuilder)
-    const destinationChainExecutionGasUsage = this.computeOnchainTradeGasUsage(quota.exchangeRoute[1] ?? [], receiveNativeAmount, mixinBuilder)
+    const sourceChainExecutionGasUsage = quota.smartRoutingEstimatedGasUsage ? new BigNumber(quota.smartRoutingEstimatedGasUsage) : this.computeOnchainTradeGasUsage(quota.exchangeRoute[0] ?? [], 0, mixinBuilder)
+    const destinationChainExecutionGasUsage = quota.smartRoutingEstimatedGasUsage ? new BigNumber(0) : this.computeOnchainTradeGasUsage(quota.exchangeRoute[1] ?? [], receiveNativeAmount, mixinBuilder)
 
     const stargateGasUsage = sourceChainExecutionGasUsage.eq(0) ? stargateHollowMessageGasUsage : stargateSwapMessageGasUsage
 
@@ -248,5 +212,41 @@ export class ExchangeUtils {
     })
 
     return _request
+  }
+
+  private static async getTokenResetRequiredStatus(token: BasicToken, spendAmount: Amount, ownerAddress: Address, config?: SdkConfig) {
+    const tokenIface = Token__factory.createInterface()
+    const _approve = tokenIface.encodeFunctionData("approve", [
+      contractAddresses.entryPoint(token.network, config),
+      spendAmount.toBigNumber().toFixed(0)
+    ])
+
+    const _estimation = await ethersProvider(token.network)
+      ?.estimateGas({ from: ownerAddress.toString(), to: token.address.toString(), data: _approve })
+      .catch(() => null)
+
+    return !_estimation
+  }
+
+  private static computeOnchainTradeGasUsage(routeSet: RouteStep[][], receiveNativeCount = 0, mixinBuilder: SdkMixins) {
+    const mixin = mixinBuilder.getMixinApplicator("internal")
+      .getNamespaceApplicator("computeOnchainTradeGasUsage")
+
+    const uniswapV3StepGasUsage = mixin.applyMixin("uniswapV3StepGasUsage", 450_000)
+    const uniswapV2StepGasUsage = mixin.applyMixin("uniswapV2StepGasUsage", 300_000)
+    const receiveNativeGasUsage = mixin.applyMixin("receiveNativeGasUsage", 80_000)
+
+    let routeGasUsage = new BigNumber(mixin.applyMixin("routeInitialGasUsage", 100_000))
+
+    if (routeSet.length === 0) return routeGasUsage
+    routeSet.forEach(route => {
+      route.map(step => {
+        routeGasUsage = routeGasUsage.plus(step.version === "uniswap_v3" ? uniswapV3StepGasUsage : uniswapV2StepGasUsage)
+      })
+    })
+
+    if (receiveNativeCount > 0) routeGasUsage.plus(receiveNativeGasUsage * receiveNativeCount)
+
+    return routeGasUsage
   }
 }

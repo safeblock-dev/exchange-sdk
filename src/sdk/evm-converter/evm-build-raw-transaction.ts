@@ -8,7 +8,7 @@ import { ExchangeRequest, SimulatedRoute } from "~/types"
 import adjustPercentages from "~/utils/adjust-percentages"
 import convertPairsToHex from "~/utils/convert-pairs-to-hex"
 
-export default async function evmBuildRawTransaction(from: Address, request: ExchangeRequest, route: SimulatedRoute, mixins: SdkMixins, config: SdkConfig) {
+export default async function evmBuildRawTransaction(from: Address, request: ExchangeRequest, route: SimulatedRoute, mixins: SdkMixins, config: SdkConfig, crossChain = false) {
   const pairsHex = route.originalRouteSet.map(route => convertPairsToHex(route))
 
   const applicator = mixins.getMixinApplicator("internal").getNamespaceApplicator("createSingleChainTransaction")
@@ -20,61 +20,52 @@ export default async function evmBuildRawTransaction(from: Address, request: Exc
   let multiSwapData: string
   let amountIn: Amount = request.amountIn
 
-  if (route.isExactInput || route.tokenIn.network.chainId.toString() !== "56" || route.tokensOut.length > 1) {
-    multiSwapData = multiSwapIface.encodeFunctionData("multiswap2", [
-      {
-        fullAmount: route.amountIn.toBigInt(),
-        amountInPercentages: route.estimatedPartialPercents || adjustPercentages(route.amountOutReadablePercentages),
-        minAmountsOut: route.amountsOut.map((amount, index) => {
-          if (route.originalRouteSet[index].length === 0) return "0" // Tokens transfer only
-
-          return new BigNumber(100)
-            .minus(route.slippageReadablePercent ?? 1)
-            .multipliedBy(amount.toString())
-            .div(100)
-            .toFixed(0)
-        }),
-        tokenIn: route.tokenIn.address.toString(),
-        tokensOut: route.tokensOut.map(token => token.address.equalTo(Address.zeroAddress)
-          ? Address.wrappedOf(token.network)
-          : token.address.toString()),
-        pairs: pairsHex
-      }
-    ])
-  }
+  if (route.smartRoutingDetails && route.tokensOut.length === 1) multiSwapData = route.smartRoutingDetails.callData
   else {
-    const quoterResponse = await quoterInstance.multiswap2Reverse({
-      fullAmount: "0",
-      amountInPercentages: route.tokensOut.map(token => token.address.equalTo(Address.zeroAddress)
-        ? Address.wrappedOf(token.network)
-        : token.address.toString()),
-      minAmountsOut: request.amountsOut.map(amount => amount.toString()),
-      tokenIn: route.tokenIn.address.toString(),
-      tokensOut: route.tokensOut.map(token => token.address.equalTo(Address.zeroAddress)
-        ? Address.wrappedOf(token.network)
-        : token.address.toString()),
-      pairs: pairsHex
-    })
+    if (route.isExactInput || route.tokensOut.length > 1) {
+      multiSwapData = multiSwapIface.encodeFunctionData("multiswap2", [
+        {
+          fullAmount: route.amountIn.toBigInt(),
+          amountInPercentages: route.estimatedPartialPercents || adjustPercentages(route.amountOutReadablePercentages),
+          minAmountsOut: route.amountsOut.map((amount, index) => {
+            if (route.originalRouteSet[index].length === 0) return "0"
 
-    let quoterAmount = new BigNumber(quoterResponse.toString())
-    quoterAmount = quoterAmount.multipliedBy(1 + (request.slippageReadablePercent / 100))
-
-    amountIn = Amount.from(quoterAmount.toFixed(0), request.tokenIn.decimals, false)
-
-    multiSwapData = multiSwapIface.encodeFunctionData("multiswap2Reverse", [
-      {
-        fullAmount: quoterAmount.toFixed(0),
-        amountInPercentages: route.tokensOut.map(token => token.address.equalTo(Address.zeroAddress)
-          ? Address.wrappedOf(token.network)
-          : token.address.toString()),
+            return new BigNumber(100)
+              .minus(route.slippageReadablePercent ?? 1)
+              .multipliedBy(amount.toString())
+              .div(100)
+              .toFixed(0)
+          }),
+          tokenIn: Address.requireWrapped(route.tokenIn.address, route.tokenIn.network).toString(),
+          tokensOut: route.tokensOut.map(token => Address.requireWrapped(token.address, token.network).toString()),
+          pairs: pairsHex
+        }
+      ])
+    }
+    else {
+      const quoterResponse = await quoterInstance.multiswap2Reverse({
+        fullAmount: "0",
+        amountInPercentages: route.tokensOut.map(token => Address.requireWrapped(token.address, token.network).toString()),
         minAmountsOut: request.amountsOut.map(amount => amount.toString()),
-        tokenIn: route.tokenIn.address.toString(),
-        tokensOut: route.tokensOut.map(token => token.address.equalTo(Address.zeroAddress)
-          ? Address.wrappedOf(token.network)
-          : token.address.toString()),
+        tokenIn: Address.requireWrapped(route.tokenIn.address, route.tokenIn.network).toString(),
+        tokensOut: route.tokensOut.map(token => Address.requireWrapped(token.address, token.network).toString()),
         pairs: pairsHex
-      }
-    ])
+      })
+
+      let quoterAmount = new BigNumber(quoterResponse.toString())
+      quoterAmount = quoterAmount.multipliedBy(1 + (request.slippageReadablePercent / 100))
+
+      amountIn = Amount.from(quoterAmount.toFixed(0), request.tokenIn.decimals, false)
+
+      multiSwapData = multiSwapIface.encodeFunctionData("multiswapReverse", [
+        {
+          pairs: pairsHex,
+          tokensIn: [Address.requireWrapped(route.tokenIn.address, route.tokenIn.network).toString()],
+          tokensOut: route.tokensOut.map(token => Address.requireWrapped(token.address, token.network).toString()),
+          amountsOut: request.amountsOut.map(amount => amount.toString())
+        }
+      ])
+    }
   }
 
   const transferFaucetIface = TransferFaucet__factory.createInterface()
@@ -101,12 +92,23 @@ export default async function evmBuildRawTransaction(from: Address, request: Exc
 
   const entryPointIface = Entrypoint__factory.createInterface()
 
-  const multiCallData = entryPointIface.encodeFunctionData("multicall", [
-    [
-      multiSwapData,
-      ...transferData
-    ]
-  ])
+  const multiCallData = crossChain
+    ? entryPointIface.encodeFunctionData("multicall(bytes[])", [
+      [
+        multiSwapData,
+        ...transferData
+      ]
+    ])
+    : entryPointIface.encodeFunctionData("multicall((address[],uint256[]),bytes[])", [
+      {
+        tokens: [request.tokenIn.address.toString()],
+        amounts: [amountIn.toString()]
+      },
+      [
+        multiSwapData,
+        ...transferData
+      ]
+    ])
 
   return {
     multiSwapData,

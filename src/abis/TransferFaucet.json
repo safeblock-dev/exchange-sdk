@@ -17,22 +17,7 @@
   },
   {
     "inputs": [],
-    "name": "TransferFacet_TransferFromFailed",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "TransferHelper_GetBalanceError",
-    "type": "error"
-  },
-  {
-    "inputs": [],
     "name": "TransferHelper_TransferError",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "TransientStorageFacetLibrary_InvalidSenderAddress",
     "type": "error"
   },
   {
@@ -58,39 +43,6 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "token",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "amount",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "nonce",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "deadline",
-        "type": "uint256"
-      },
-      {
-        "internalType": "bytes",
-        "name": "signature",
-        "type": "bytes"
-      }
-    ],
-    "name": "transferFromPermit2",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
         "name": "to",
         "type": "address"
       },
@@ -101,7 +53,13 @@
       }
     ],
     "name": "transferToken",
-    "outputs": [],
+    "outputs": [
+      {
+        "internalType": "bytes32[]",
+        "name": "tokensAndAmounts",
+        "type": "bytes32[]"
+      }
+    ],
     "stateMutability": "nonpayable",
     "type": "function"
   },
@@ -114,7 +72,13 @@
       }
     ],
     "name": "unwrapNativeAndTransferTo",
-    "outputs": [],
+    "outputs": [
+      {
+        "internalType": "bytes32[]",
+        "name": "tokensAndAmounts",
+        "type": "bytes32[]"
+      }
+    ],
     "stateMutability": "nonpayable",
     "type": "function"
   }

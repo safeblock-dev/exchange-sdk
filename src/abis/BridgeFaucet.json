@@ -12,11 +12,6 @@
   },
   {
     "inputs": [],
-    "name": "StargateFacet_InvalidNativeBalance",
-    "type": "error"
-  },
-  {
-    "inputs": [],
     "name": "StargateFacet_NotLZEndpoint",
     "type": "error"
   },
@@ -41,13 +36,19 @@
     "type": "error"
   },
   {
-    "inputs": [],
-    "name": "TransferHelper_TransferFromError",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "TransientStorageFacetLibrary_InvalidSenderAddress",
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "expectedGreaterValue",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "expectedLowerBalance",
+        "type": "uint256"
+      }
+    ],
+    "name": "ValueLowerThanExpected",
     "type": "error"
   },
   {
@@ -171,11 +172,6 @@
         "type": "uint32"
       },
       {
-        "internalType": "uint256",
-        "name": "amountLD",
-        "type": "uint256"
-      },
-      {
         "internalType": "address",
         "name": "receiver",
         "type": "address"
@@ -192,7 +188,13 @@
       }
     ],
     "name": "sendStargateV2",
-    "outputs": [],
+    "outputs": [
+      {
+        "internalType": "bytes32[]",
+        "name": "tokensAndAmounts",
+        "type": "bytes32[]"
+      }
+    ],
     "stateMutability": "nonpayable",
     "type": "function"
   }

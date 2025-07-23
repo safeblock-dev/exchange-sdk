@@ -2,6 +2,20 @@ import { Address, Amount } from "@safeblock/blockchain-utils"
 import { Network } from "ethers"
 
 export namespace BackendResponse {
+  export type UnitsAPIResponse = {
+    args: [
+      string[],
+      string[],
+      {
+        executionPrice: string
+        deadline: string
+        v: number
+        r: string
+        s: string
+      }
+    ]
+  }
+
   export interface IBackendRouteStep {
     address: Address
     exchange_id: string
@@ -14,6 +28,18 @@ export namespace BackendResponse {
     fee_algorithm?: string
 
     version: string
+  }
+
+  export interface IExperimentalRoutingResponse {
+    amount_in: string
+    amount_out: string
+    calldata: {
+      tokens_in: string[],
+      tokens_out: string[],
+      min_amounts_out: string[],
+      pairs: string[][]
+    }
+    exchanges: string[]
   }
 
   interface IBackendToken {
@@ -81,6 +107,12 @@ export interface SimulatedRoute {
   amountsOut: Amount[]
   amountOutReadablePercentages: number[]
 
+  smartRoutingDetails?: {
+    callData: string
+    exchangeIds: string[]
+    gasUsage: string
+  }
+
   slippageReadablePercent: number
 
   isExactInput: boolean
@@ -116,6 +148,8 @@ export interface ExchangeRequest {
   arrivalGasAmount?: Amount
   /** Smart routing switch */
   smartRouting?: boolean
+  /** Precision of the smart routing. 1-100 */
+  smartRoutingPrecision?: number
 }
 
 /**
@@ -161,4 +195,6 @@ export interface ExchangeQuota {
   slippageReadable: number
   /** Price impact for each output token */
   priceImpact: number[]
+  /** Estimated gas usage of the smart routing */
+  smartRoutingEstimatedGasUsage?: string
 }

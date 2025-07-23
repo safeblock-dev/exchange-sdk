@@ -1,17 +1,17 @@
-import { Address, Amount, arrayUtils } from "@safeblock/blockchain-utils"
+import { Address, Amount, arrayUtils, units } from "@safeblock/blockchain-utils"
 import BigNumber from "bignumber.js"
 import { AbiCoder, toUtf8Bytes } from "ethers"
-import { BridgeFaucet__factory, Entrypoint__factory, TransferFaucet__factory } from "~/abis/types"
+import { BridgeFaucet__factory, CrossCurveFacet__factory, Entrypoint__factory, TransferFaucet__factory } from "~/abis/types"
 import { contractAddresses, stargateNetworksMapping } from "~/config"
 import { PriceStorageExtension } from "~/extensions"
 import { SdkConfig } from "~/sdk"
 import evmBuildRawTransaction from "~/sdk/evm-converter/evm-build-raw-transaction"
 import EvmConverter from "~/sdk/evm-converter/evm-converter"
 import { ExchangeUtils } from "~/sdk/exchange-utils"
-import { SdkMixins } from "~/sdk/sdk-mixins"
-import { ExchangeQuota, ExchangeRequest, ExecutorCallData, SimulatedRoute } from "~/types"
 import SdkException, { SdkExceptionCode } from "~/sdk/sdk-exception"
-import { BasicToken } from "~/types"
+import { SdkMixins } from "~/sdk/sdk-mixins"
+import { BackendResponse, BasicToken, ExchangeQuota, ExchangeRequest, ExecutorCallData, SimulatedRoute } from "~/types"
+import { default as httpRequest } from "~/utils/request"
 
 interface IBuildCrossChainTransactionOptions {
   sourceChainRoute: SimulatedRoute | null
@@ -126,7 +126,7 @@ export default class EvmCrossChainExtension {
 
       const sourceChainRoutes = await this.parent.fetchRoute(ExchangeUtils.updateRequest(request, {
         tokensOut: [fromNetworkUSDC],
-        amountOutReadablePercentages: [100],
+        amountOutReadablePercentages: [100]
       }), taskId)
 
       if (!this.parent.sdkInstance.verifyTask(taskId)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
@@ -212,7 +212,7 @@ export default class EvmCrossChainExtension {
     }
 
     if (destinationChainRoute) {
-      const destinationChainSwapData = await evmBuildRawTransaction(from, request, destinationChainRoute, this.mixins, this.sdkConfig)
+      const destinationChainSwapData = await evmBuildRawTransaction(from, request, destinationChainRoute, this.mixins, this.sdkConfig, true)
 
       if (!this.parent.sdkInstance.verifyTask(taskId)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 
@@ -230,7 +230,10 @@ export default class EvmCrossChainExtension {
     }
 
     this.sdkConfig.debugLogListener?.("Build: Computing bridge quota")
-    const bridgeQuota = await ExchangeUtils.computeBridgeQuota(
+
+    const isUnits = request.tokensOut[0].network.name === units.name || request.tokenIn.network.name === units.name
+
+    const bridgeQuota = isUnits ? null : await ExchangeUtils.computeBridgeQuota(
       request,
       from,
       sourceNetworkSendAmount.toBigNumber().toFixed(0),
@@ -243,9 +246,9 @@ export default class EvmCrossChainExtension {
 
     if (bridgeQuota instanceof SdkException) return bridgeQuota
 
-    nativeAmount = nativeAmount.plus(bridgeQuota.valueToSend.toString())
+    nativeAmount = nativeAmount.plus(bridgeQuota ? bridgeQuota.valueToSend.toString() : 0)
 
-    const arrivalGas = await ExchangeUtils.computeArrivalGasData(request, from, this.sdkConfig)
+    const arrivalGas = isUnits ? null : await ExchangeUtils.computeArrivalGasData(request, from, this.sdkConfig)
 
     if (!this.parent.sdkInstance.verifyTask(taskId)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 
@@ -254,28 +257,91 @@ export default class EvmCrossChainExtension {
     const mixin = this.mixins.getMixinApplicator("internal")
       .getNamespaceApplicator("buildCrossChainTransaction")
 
-    if (arrivalGas) nativeAmount = mixin.applyMixin("nativeAmountFinalized", nativeAmount.plus(arrivalGas.nativeAmount.toBigNumber()))
+    if (arrivalGas && !isUnits) nativeAmount = mixin.applyMixin("nativeAmountFinalized", nativeAmount.plus(arrivalGas.nativeAmount.toBigNumber()))
 
     const transferData = await mixin.applyMixin("tokenTransferCallDataFinalized", transferFaucetIface.encodeFunctionData("transferToken", [
       Address.from(request.destinationAddress || from || Address.zeroAddress).toString(),
       sourceChainRoute ? sourceChainRoute.tokensOut.map(t => t.address.toString()) : [fromNetworkUSDC.address.toString()]
     ]))
 
-    sourceNetworkCallData.push(
-      mixin.applyMixin("stargateSendV2CallData", (
-        bridgeIface.encodeFunctionData("sendStargateV2", [
-          contractAddresses.stargateUSDCPool(request.tokenIn.network),
-          stargateNetworksMapping(request.tokensOut[0].network),
-          !Address.equal(request.tokenIn.address, fromNetworkUSDC.address) ? 0 : Amount
-            .select(sourceChainRoute?.amountIn!, sourceNetworkSendAmount)!.toString(),
-          destinationNetworkCallData
-            ? contractAddresses.entryPoint(request.tokensOut[0].network, this.sdkConfig)
-            : (request.destinationAddress || from || Address.zeroAddress).toString(),
-          destinationNetworkCallData ? (450_000 + (150_000 * (destinationChainRoute?.originalRouteSet.flat(1).length ?? 0))) : 0,
-          destinationNetworkCallData || toUtf8Bytes("")
+    if (isUnits) {
+      const unitsResponseA = await httpRequest({
+        base: "https://api.crosscurve.fi",
+        path: "/routing/scan",
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: {
+          params: {
+            chainIdOut: parseInt(request.tokensOut[0].network.chainId.toString()),
+            tokenOut: contractAddresses.usdcParams(request.tokensOut[0].network).address.toString(),
+            chainIdIn: parseInt(request.tokenIn.network.chainId.toString()),
+            amountIn: request.tokenIn.address.equalTo(contractAddresses.usdcParams(request.tokenIn.network).address) ? sourceNetworkSendAmount.toBigNumber().multipliedBy(0.997).toFixed(0) : sourceNetworkSendAmount.toString(),
+            tokenIn: contractAddresses.usdcParams(request.tokenIn.network).address.toString()
+          },
+          slippage: 1
+        }
+      })
+
+      if (!unitsResponseA || !unitsResponseA.length) throw new SdkException("Cannot compute cross curve exchange: A", SdkExceptionCode.InternalError)
+
+      const unitsResponseB = await httpRequest({
+        base: "https://api.crosscurve.fi",
+        path: "/estimate",
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: unitsResponseA[0]
+      })
+
+      if (!unitsResponseB) throw new SdkException("Cannot compute cross curve exchange: B", SdkExceptionCode.InternalError)
+
+      const unitsFinalResponse = await httpRequest<BackendResponse.UnitsAPIResponse>({
+        base: "https://api.crosscurve.fi",
+        path: "/tx/create",
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: {
+          from: contractAddresses.entryPoint(request.tokenIn.network, this.sdkConfig),
+          recipient: request.destinationAddress?.toString() || from?.toString(),
+          routing: unitsResponseA[0],
+          estimate: unitsResponseB
+        }
+      })
+
+      if (!unitsFinalResponse) throw new SdkException("Cannot compute cross curve exchange: final", SdkExceptionCode.InternalError)
+
+      const crossCurveIface = CrossCurveFacet__factory.createInterface()
+
+      sourceNetworkCallData.push(
+        crossCurveIface.encodeFunctionData("startCrossCurve", [
+          unitsFinalResponse.args[0],
+          unitsFinalResponse.args[1],
+          unitsFinalResponse.args[2]
         ])
-      ))
-    )
+      )
+
+      nativeAmount = nativeAmount.plus(unitsFinalResponse.args[2].executionPrice)
+    }
+    else {
+      sourceNetworkCallData.push(
+        mixin.applyMixin("stargateSendV2CallData", (
+          bridgeIface.encodeFunctionData("sendStargateV2", [
+            contractAddresses.stargateUSDCPool(request.tokenIn.network),
+            stargateNetworksMapping(request.tokensOut[0].network),
+            destinationNetworkCallData
+              ? contractAddresses.entryPoint(request.tokensOut[0].network, this.sdkConfig)
+              : (request.destinationAddress || from || Address.zeroAddress).toString(),
+            destinationNetworkCallData ? (450_000 + (150_000 * (destinationChainRoute?.originalRouteSet.flat(1).length ?? 0))) : 0,
+            destinationNetworkCallData || toUtf8Bytes("")
+          ])
+        ))
+      )
+    }
 
     sourceNetworkCallData.push(mixin.applyMixin("transferDataEncoded", transferData))
 
@@ -294,7 +360,7 @@ export default class EvmCrossChainExtension {
       resetRequired
     } = await ExchangeUtils.getTokenTransferDetails(
       request.tokenIn,
-      from || Address.from(Address.zeroAddress),
+      from || Address.zeroAddress,
       request.amountIn,
       this.sdkConfig
     )
@@ -330,7 +396,11 @@ export default class EvmCrossChainExtension {
     }
 
     executorCallData.push(mixin.applyMixin("multiCallTransactionRequest", {
-      callData: entryPointIface.encodeFunctionData("multicall", [
+      callData: entryPointIface.encodeFunctionData("multicall((address[],uint256[]),bytes[])", [
+        {
+          tokens: [request.tokenIn.address.toString()],
+          amounts: [request.amountIn.toString()]
+        },
         sourceNetworkCallData
       ]),
       gasLimitMultiplier: 1.2,
@@ -372,6 +442,9 @@ export default class EvmCrossChainExtension {
     this.sdkConfig.debugLogListener?.(`Build: amountIn -> from ${ request.amountIn.toReadable() } to ${ correctedAmountIn.toReadable() }`)
     this.sdkConfig.debugLogListener?.(`Build: amountOut -> from ${ request.amountsOut.map(a => a.toReadable()).join(",") } to ${ correctedAmountsOut.map(a => a.toReadable()).join(",") }`)
 
+    const smGasUsage = new BigNumber(sourceChainRoute?.smartRoutingDetails?.gasUsage || "0")
+      .plus(destinationChainRoute?.smartRoutingDetails?.gasUsage || "0")
+
     const rawQuota: Omit<ExchangeQuota, "estimatedGasUsage"> = {
       executorCallData,
       exchangeRoute: arrayUtils.nonNullable([sourceChainRoute?.originalRouteSet, destinationChainRoute?.originalRouteSet]),
@@ -384,9 +457,10 @@ export default class EvmCrossChainExtension {
       priceImpact: request.tokensOut.map((tokenOut, index) => (
         ExchangeUtils
           .computePriceImpact(request, tokenOut, correctedAmountIn.mul(request.amountOutReadablePercentages[index] / 100), correctedAmountsOut[index], this.parent.sdkInstance.extension(PriceStorageExtension))
-      ))
+      )),
+      smartRoutingEstimatedGasUsage: smGasUsage.gt(0) ? smGasUsage.toFixed(0) : undefined
     }
-
+    
     return mixin.applyMixin("quotaComputationFinalized", {
       ...rawQuota,
       estimatedGasUsage: ExchangeUtils.computeQuotaExecutionGasUsage(rawQuota, this.mixins)
