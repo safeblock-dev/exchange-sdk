@@ -130,10 +130,10 @@ export class ExchangeUtils {
 
     const receiveNativeAmount = quota.tokensOut.filter(i => i.address.equalTo(Address.zeroAddress)).length
     if (quota.tokenIn.network.name === quota.tokensOut[0].network.name)
-      return { [quota.tokenIn.network.name]: Amount.from(this.computeOnchainTradeGasUsage(quota.exchangeRoute[0] ?? [], receiveNativeAmount, mixinBuilder), 18, true) }
+      return { [quota.tokenIn.network.name]: quota.smartRoutingEstimatedGasUsage ? Amount.from(quota.smartRoutingEstimatedGasUsage, 18, true) : Amount.from(this.computeOnchainTradeGasUsage(quota.exchangeRoute[0] ?? [], receiveNativeAmount, mixinBuilder), 18, true) }
 
-    const sourceChainExecutionGasUsage = this.computeOnchainTradeGasUsage(quota.exchangeRoute[0] ?? [], 0, mixinBuilder)
-    const destinationChainExecutionGasUsage = this.computeOnchainTradeGasUsage(quota.exchangeRoute[1] ?? [], receiveNativeAmount, mixinBuilder)
+    const sourceChainExecutionGasUsage = quota.smartRoutingEstimatedGasUsage ? new BigNumber(quota.smartRoutingEstimatedGasUsage) : this.computeOnchainTradeGasUsage(quota.exchangeRoute[0] ?? [], 0, mixinBuilder)
+    const destinationChainExecutionGasUsage = quota.smartRoutingEstimatedGasUsage ? new BigNumber(0) : this.computeOnchainTradeGasUsage(quota.exchangeRoute[1] ?? [], receiveNativeAmount, mixinBuilder)
 
     const stargateGasUsage = sourceChainExecutionGasUsage.eq(0) ? stargateHollowMessageGasUsage : stargateSwapMessageGasUsage
 

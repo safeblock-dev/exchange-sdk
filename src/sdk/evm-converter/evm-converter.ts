@@ -97,7 +97,8 @@ export default class EvmConverter extends ExchangeConverter {
       tokensOut: options.route.tokensOut,
       slippageReadable: options.route.slippageReadablePercent,
       priceImpact: options.route.priceImpactPercents,
-      amountOutReadablePercentages: options.route.amountOutReadablePercentages
+      amountOutReadablePercentages: options.route.amountOutReadablePercentages,
+      smartRoutingEstimatedGasUsage: options.route.smartRoutingDetails?.gasUsage
     }
 
     return {

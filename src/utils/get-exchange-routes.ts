@@ -1,10 +1,9 @@
 import { Address, arrayUtils } from "@safeblock/blockchain-utils"
-import { BackendResponse, RouteStep } from "~/types"
+import { BackendResponse, BasicToken, RouteStep } from "~/types"
 import LimitedMap from "~/utils/limited-map"
 import request from "~/utils/request"
-import { BasicToken } from "~/types"
-import IRoutesResponse = BackendResponse.IRoutesResponse
 import IBackendRouteStep = BackendResponse.IBackendRouteStep
+import IRoutesResponse = BackendResponse.IRoutesResponse
 import IRoutesResponseNext = BackendResponse.IRoutesResponseNext
 
 interface Options {
@@ -66,13 +65,14 @@ export default async function getExchangeRoutes(options: Options): Promise<{ rou
     const _rawRoutes = rawRoutes as BackendResponse.IRoutesResponseNext
 
     plainRoutesList = _rawRoutes.route
-  } else {
+  }
+  else {
     const _rawRoutes = rawRoutes as BackendResponse.IRoutesResponse
 
-    plainRoutesList = [ ..._rawRoutes.items.swap.map(route => [ route ]), ..._rawRoutes.items.multiswap ]
+    plainRoutesList = [..._rawRoutes.items.swap.map(route => [route]), ..._rawRoutes.items.multiswap]
   }
 
-  if (plainRoutesList.length === 0) return { routes: [], percents: [] }
+  if (!plainRoutesList || plainRoutesList.length === 0) return { routes: [], percents: [] }
 
   return {
     routes: arrayUtils.nonNullable(
@@ -93,13 +93,13 @@ export default async function getExchangeRoutes(options: Options): Promise<{ rou
             token0: {
               address: Address.from(tokenA.address),
               decimals: tokenA.decimals,
-              network: fromToken.network,
+              network: fromToken.network
             },
 
             token1: {
               address: Address.from(tokenB.address),
               decimals: tokenB.decimals,
-              network: fromToken.network,
+              network: fromToken.network
             }
           }
         })

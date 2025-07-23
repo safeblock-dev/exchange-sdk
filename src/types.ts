@@ -110,6 +110,7 @@ export interface SimulatedRoute {
   smartRoutingDetails?: {
     callData: string
     exchangeIds: string[]
+    gasUsage: string
   }
 
   slippageReadablePercent: number
@@ -194,4 +195,6 @@ export interface ExchangeQuota {
   slippageReadable: number
   /** Price impact for each output token */
   priceImpact: number[]
+  /** Estimated gas usage of the smart routing */
+  smartRoutingEstimatedGasUsage?: string
 }

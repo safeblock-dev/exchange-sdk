@@ -1,4 +1,4 @@
-import { Amount } from "@safeblock/blockchain-utils"
+import { Amount, arrayUtils } from "@safeblock/blockchain-utils"
 import { MultiswapRouterFaucet__factory } from "~/abis/types"
 import { PriceStorageExtension } from "~/extensions"
 import { ExchangeUtils } from "~/sdk/exchange-utils"
@@ -9,7 +9,7 @@ export default function convertExperimentalToRoute(sdkInstance: SdkCore, request
   const amountOut = Amount.from(experimentalRoute.amount_out, request.tokensOut[0].decimals, false)
 
   const multiSwapRouterIface = MultiswapRouterFaucet__factory.createInterface()
-  
+
   const callData = multiSwapRouterIface.encodeFunctionData("multiswap", [
     {
       tokensOut: experimentalRoute.calldata.tokens_out,
@@ -31,7 +31,10 @@ export default function convertExperimentalToRoute(sdkInstance: SdkCore, request
 
     smartRoutingDetails: {
       callData,
-      exchangeIds: experimentalRoute.exchanges
+      exchangeIds: experimentalRoute.exchanges,
+      gasUsage: arrayUtils.safeReduce(experimentalRoute.calldata.pairs.flat(2).map(pair => {
+        return pair.startsWith("0x8") ? 450_000 : 300_000
+      })).toFixed(0)
     },
 
     slippageReadablePercent: request.slippageReadablePercent,

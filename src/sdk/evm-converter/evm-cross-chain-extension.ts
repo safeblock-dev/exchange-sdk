@@ -442,6 +442,9 @@ export default class EvmCrossChainExtension {
     this.sdkConfig.debugLogListener?.(`Build: amountIn -> from ${ request.amountIn.toReadable() } to ${ correctedAmountIn.toReadable() }`)
     this.sdkConfig.debugLogListener?.(`Build: amountOut -> from ${ request.amountsOut.map(a => a.toReadable()).join(",") } to ${ correctedAmountsOut.map(a => a.toReadable()).join(",") }`)
 
+    const smGasUsage = new BigNumber(sourceChainRoute?.smartRoutingDetails?.gasUsage || "0")
+      .plus(destinationChainRoute?.smartRoutingDetails?.gasUsage || "0")
+
     const rawQuota: Omit<ExchangeQuota, "estimatedGasUsage"> = {
       executorCallData,
       exchangeRoute: arrayUtils.nonNullable([sourceChainRoute?.originalRouteSet, destinationChainRoute?.originalRouteSet]),
@@ -454,9 +457,10 @@ export default class EvmCrossChainExtension {
       priceImpact: request.tokensOut.map((tokenOut, index) => (
         ExchangeUtils
           .computePriceImpact(request, tokenOut, correctedAmountIn.mul(request.amountOutReadablePercentages[index] / 100), correctedAmountsOut[index], this.parent.sdkInstance.extension(PriceStorageExtension))
-      ))
+      )),
+      smartRoutingEstimatedGasUsage: smGasUsage.gt(0) ? smGasUsage.toFixed(0) : undefined
     }
-
+    
     return mixin.applyMixin("quotaComputationFinalized", {
       ...rawQuota,
       estimatedGasUsage: ExchangeUtils.computeQuotaExecutionGasUsage(rawQuota, this.mixins)
