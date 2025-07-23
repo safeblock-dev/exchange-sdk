@@ -5,7 +5,7 @@ import { SdkConfig } from "~/sdk"
 
 const contractAddresses = {
   entryPoint: (network: Network, config?: SdkConfig) => selectAddress(network, config?.contractAddresses?.entryPoint ?? {
-    default: "0x07eA307c40599915177b8d0c2EF0F67871Ba4652",
+    default: "0xA5487594bD2303AF225f8c15E80CED0Da883A0E8",
     [units.name]: "0xA26c8aC451d9EBbd4B40e8D2Ed91f5c55b989001"
   }),
 
