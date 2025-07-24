@@ -186,6 +186,7 @@ export default async function simulateRoutes(
 
       return arrayUtils.nonNullable(
         chunkRoutesList.map(arr => {
+          if (arr.length === 0) return null
           return arr.sort((a, b) => a.amountOut.gt(b.amountOut) ? -1 : 1)[0]
         })
       )
