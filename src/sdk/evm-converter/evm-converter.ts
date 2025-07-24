@@ -1,5 +1,6 @@
 import { Address, Amount, arrayUtils, ethersProvider } from "@safeblock/blockchain-utils"
 import BigNumber from "bignumber.js"
+import { sdkConfig } from "~/__specs__/utils/sdk-test-config"
 import { WrappedToken__factory } from "~/abis/types"
 import { contractAddresses, publicBackendURL } from "~/config"
 import { PriceStorageExtension } from "~/extensions"
@@ -220,7 +221,6 @@ export default class EvmConverter extends ExchangeConverter {
           backendUrl: this.sdkConfig.backend?.url ?? publicBackendURL,
           headers: this.sdkConfig.backend?.headers,
           bannedDexIds: this.sdkInstance.dexBlacklist.toArray(),
-          limit: this.sdkConfig.routesCountLimit ?? 3,
           fromToken: request.tokenIn,
           toToken: tokenOut,
           amountInRaw: smartRoutingAvailable ? request.amountIn.toString() : undefined
@@ -231,13 +231,17 @@ export default class EvmConverter extends ExchangeConverter {
     if (signal?.aborted) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 
     const routesCount = routes.map(r => r.routes).flat(2).length
-    this.sdkConfig.debugLogListener?.(`Fetch: Received ${ routesCount } (${ this.sdkConfig.routesCountHardLimit ?? 40 } limit) raw routes for single-chain trade`)
+    this.sdkConfig.debugLogListener?.(`Fetch: Received ${ routesCount } raw routes for single-chain trade`)
 
     if (!this.sdkInstance.verifyTask(taskId)) return new SdkException("Task aborted", SdkExceptionCode.Aborted)
 
     if (routesCount === 0) return new SdkException("Routes not found", SdkExceptionCode.RoutesNotFound)
 
-    const tokenRouteChunks = routes.map(route => arrayUtils.toChunks(route.routes, 40))
+    const tokenRouteChunks = routes.map(route => {
+      if (sdkConfig.simulationLimit?.chunksCountLimit) return arrayUtils.toChunks(route.routes, sdkConfig.simulationLimit?.chunkSizeLimit ?? 40).slice(0, sdkConfig.simulationLimit.chunksCountLimit)
+
+      return arrayUtils.toChunks(route.routes, sdkConfig.simulationLimit?.chunkSizeLimit ?? 40)
+    })
 
     const simulatedRoute = this.mixins.getMixinApplicator("internal")
       .applyMixin("fetchRoute", "receivedFinalizedRoute", await simulateRoutes(
