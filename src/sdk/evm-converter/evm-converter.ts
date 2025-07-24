@@ -1,6 +1,5 @@
 import { Address, Amount, arrayUtils, ethersProvider } from "@safeblock/blockchain-utils"
 import BigNumber from "bignumber.js"
-import { sdkConfig } from "~/__specs__/utils/sdk-test-config"
 import { WrappedToken__factory } from "~/abis/types"
 import { contractAddresses, publicBackendURL } from "~/config"
 import { PriceStorageExtension } from "~/extensions"
@@ -238,9 +237,9 @@ export default class EvmConverter extends ExchangeConverter {
     if (routesCount === 0) return new SdkException("Routes not found", SdkExceptionCode.RoutesNotFound)
 
     const tokenRouteChunks = routes.map(route => {
-      if (sdkConfig.simulationLimit?.chunksCountLimit) return arrayUtils.toChunks(route.routes, sdkConfig.simulationLimit?.chunkSizeLimit ?? 40).slice(0, sdkConfig.simulationLimit.chunksCountLimit)
+      if (this.sdkConfig.simulationLimit?.chunksCountLimit) return arrayUtils.toChunks(route.routes, this.sdkConfig.simulationLimit?.chunkSizeLimit ?? 40).slice(0, this.sdkConfig.simulationLimit.chunksCountLimit)
 
-      return arrayUtils.toChunks(route.routes, sdkConfig.simulationLimit?.chunkSizeLimit ?? 40)
+      return arrayUtils.toChunks(route.routes, this.sdkConfig.simulationLimit?.chunkSizeLimit ?? 40)
     })
 
     const simulatedRoute = this.mixins.getMixinApplicator("internal")
