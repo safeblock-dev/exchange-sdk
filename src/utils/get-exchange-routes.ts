@@ -10,7 +10,6 @@ interface Options {
   backendUrl: string
   fromToken: BasicToken
   toToken: BasicToken
-  limit?: number
   bannedDexIds?: string[]
   headers?: Record<string, string>
   routeCacheTime?: number
@@ -25,11 +24,11 @@ interface Options {
 const routesCache = new LimitedMap<string, IRoutesResponse | IRoutesResponseNext>(10_000)
 
 export default async function getExchangeRoutes(options: Options): Promise<{ routes: RouteStep[][], percents?: string[] }> {
-  const { backendUrl, fromToken, toToken, bannedDexIds, limit, headers } = options
+  const { backendUrl, fromToken, toToken, bannedDexIds, headers } = options
 
   const routeKey = options.fromToken.address.toString() + options.toToken.address.toString()
     + options.fromToken.network.name + options.toToken.network.name
-    + options.limit + options.bannedDexIds?.join(",")
+    + options.bannedDexIds?.join(",")
     + options.amountInRaw + options.epsilon + options.maxPairsCount
 
   const cachedRoute = routesCache.get(routeKey)
@@ -45,7 +44,7 @@ export default async function getExchangeRoutes(options: Options): Promise<{ rou
       query: {
         from: Address.isZero(fromToken.address) ? Address.wrappedOf(fromToken.network) : fromToken.address.toString(),
         to: Address.isZero(toToken.address) ? Address.wrappedOf(toToken.network) : toToken.address.toString(),
-        limit: limit ?? 3,
+        limit: 30,
         network: fromToken.network.chainId.toString(),
         banned_dex_ids: bannedDexIds?.length ? bannedDexIds.join(",") : null,
         amount: options.amountInRaw,

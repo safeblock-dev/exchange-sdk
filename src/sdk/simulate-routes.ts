@@ -158,26 +158,39 @@ async function simulateSingeOutputRoutes(options: Options): Promise<SingleOutput
 
 export default async function simulateRoutes(
   request: ExchangeRequest,
-  routes: RouteStep[][][],
+  routes: RouteStep[][][][],
   config: SdkConfig,
   sdkInstance: SdkCore
 ): Promise<SimulatedRoute | SdkException> {
   config.debugLogListener?.(`Simulate: Starting parallel simulation of ${ routes.flat(3).length } routes for ${ request.tokensOut.length } tokens...`)
   const at = Date.now()
 
-  const eachTokenRawOutputs = (await Promise.all(
-    request.tokensOut.map((tokenOut, index) => (
-      simulateSingeOutputRoutes({
-        config,
-        sdkInstance,
-        routes: routes[index],
-        amountIn: request.amountIn.mul(request.amountOutReadablePercentages[index] / 100),
-        amountOut: request.amountsOut[index],
-        exactInput: request.exactInput,
-        tokenIn: request.tokenIn,
-        tokenOut: tokenOut
-      })
-    ))
+  const eachTokenRawOutputs = arrayUtils.nonNullable(await Promise.all(
+    request.tokensOut.map(async (tokenOut, index) => {
+      const routeChunks = routes[index]
+
+      const chunkRoutesList = await Promise.all(
+        routeChunks.map(async r => (
+          await simulateSingeOutputRoutes({
+            config,
+            sdkInstance,
+            routes: r,
+            amountIn: request.amountIn.mul(request.amountOutReadablePercentages[index] / 100),
+            amountOut: request.amountsOut[index],
+            exactInput: request.exactInput,
+            tokenIn: request.tokenIn,
+            tokenOut: tokenOut
+          })
+        ))
+      )
+
+      return arrayUtils.nonNullable(
+        chunkRoutesList.map(arr => {
+          if (arr.length === 0) return null
+          return arr.sort((a, b) => a.amountOut.gt(b.amountOut) ? -1 : 1)[0]
+        })
+      )
+    })
   ))
 
   eachTokenRawOutputs.forEach((tokenOutput, index) => {

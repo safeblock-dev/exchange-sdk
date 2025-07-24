@@ -41,18 +41,25 @@ export type SdkConfig = Partial<{
   debugLogListener: (...message: any[]) => void
 
   /**
-   * Maximum number of routes, not counting direct swap routes
-   *
-   * @default 3
+   * Parameters for configuring the route simulation
    */
-  routesCountLimit: number
+  simulationLimit: {
+    /**
+     * Limit of the single chunk size in the simulation
+     *
+     * Each chunk represents a single multicall request to the node
+     *
+     * @default 40
+     */
+    chunkSizeLimit?: number
 
-  /**
-   * Absolute maximum number of swap routes per request
-   *
-   * @default 30
-   */
-  routesCountHardLimit: number
+    /**
+     * Limit the maximum number of chunks that can be used for simulation per token
+     *
+     * @default unlimited
+     */
+    chunksCountLimit?: number
+  }
 
   /**
    * > Advanced option
@@ -110,10 +117,9 @@ export type SdkConfig = Partial<{
  * SDK core
  */
 export default class SdkCore<Configuration extends SdkConfig = SdkConfig> extends StateManager {
+  public _extensions: ExtractConfigExtensionsType<Configuration["extensions"]> = [] as any
   protected readonly eventBus = new EventBus<ExtractEvents<Configuration["extensions"]>>()
   protected readonly sdkConfig: SdkConfig
-  public _extensions: ExtractConfigExtensionsType<Configuration["extensions"]> = [] as any
-
   protected readonly mixins = new SdkMixins()
 
   constructor(sdkConfig?: Configuration) {
