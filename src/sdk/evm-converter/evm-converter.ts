@@ -237,12 +237,12 @@ export default class EvmConverter extends ExchangeConverter {
 
     if (routesCount === 0) return new SdkException("Routes not found", SdkExceptionCode.RoutesNotFound)
 
-    const chk = routes.map(route => arrayUtils.toChunks(route.routes, 40))
+    const tokenRouteChunks = routes.map(route => arrayUtils.toChunks(route.routes, 40))
 
     const simulatedRoute = this.mixins.getMixinApplicator("internal")
       .applyMixin("fetchRoute", "receivedFinalizedRoute", await simulateRoutes(
         request,
-        chk,
+        tokenRouteChunks,
         this.sdkConfig,
         this.sdkInstance
       ))
