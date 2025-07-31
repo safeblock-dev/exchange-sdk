@@ -1,4 +1,4 @@
-import { arbitrum, avalanche, base, bnb, gnosis, mainnet, matic, optimism, scroll } from "@safeblock/blockchain-utils"
+import { arbitrum, avalanche, base, bnb, gnosis, mainnet, matic, optimism, scroll, units } from "@safeblock/blockchain-utils"
 import { Network } from "ethers"
 import { SdkConfig } from "~/sdk"
 
@@ -11,7 +11,8 @@ const SafeblockNetworksMap: Record<string, Network> = {
   "optimism": optimism,
   "base": base,
   "gnosis": gnosis,
-  "scroll": scroll
+  "scroll": scroll,
+  "units": units
 }
 
 /** Function for converting internal `SafeBlock` network names to `ethers`-compatible names */
