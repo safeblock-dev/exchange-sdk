@@ -221,8 +221,7 @@ export default class EvmConverter extends ExchangeConverter {
           headers: this.sdkConfig.backend?.headers,
           bannedDexIds: this.sdkInstance.dexBlacklist.toArray(),
           fromToken: request.tokenIn,
-          toToken: tokenOut,
-          amountInRaw: smartRoutingAvailable ? request.amountIn.toString() : undefined
+          toToken: tokenOut
         })
       ))
     ))

@@ -1,11 +1,11 @@
 import { Address, Amount } from "@safeblock/blockchain-utils"
+import { describe, expect, it } from "vitest"
 import runSingleChainTests from "~/__specs__/utils/run-single-chain-tests"
 import { PriceStorageExtension } from "~/extensions"
 import { SdkException } from "~/index"
-import { bnbDAI, bnbUSDT, sdkConfig } from "./utils/sdk-test-config"
 import SafeBlockSDK from "~/sdk"
 import { ExchangeRequest } from "~/types"
-import { describe, expect, it } from "vitest"
+import { bnbDAI, bnbUSDT, sdkConfig } from "./utils/sdk-test-config"
 
 describe("Single chain exchanges in Ethereum networks", async () => {
   const sdk = new SafeBlockSDK(sdkConfig)

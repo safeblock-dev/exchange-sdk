@@ -2,7 +2,6 @@ import { Address, arrayUtils } from "@safeblock/blockchain-utils"
 import { BackendResponse, BasicToken, RouteStep } from "~/types"
 import LimitedMap from "~/utils/limited-map"
 import request from "~/utils/request"
-import IBackendRouteStep = BackendResponse.IBackendRouteStep
 import IRoutesResponse = BackendResponse.IRoutesResponse
 import IRoutesResponseNext = BackendResponse.IRoutesResponseNext
 
@@ -14,7 +13,6 @@ interface Options {
   headers?: Record<string, string>
   routeCacheTime?: number
 
-  amountInRaw?: string
   epsilon?: number
   maxPairsCount?: number
 
@@ -29,7 +27,7 @@ export default async function getExchangeRoutes(options: Options): Promise<{ rou
   const routeKey = options.fromToken.address.toString() + options.toToken.address.toString()
     + options.fromToken.network.name + options.toToken.network.name
     + options.bannedDexIds?.join(",")
-    + options.amountInRaw + options.epsilon + options.maxPairsCount
+    + options.epsilon + options.maxPairsCount
 
   const cachedRoute = routesCache.get(routeKey)
 
@@ -47,7 +45,6 @@ export default async function getExchangeRoutes(options: Options): Promise<{ rou
         limit: 30,
         network: fromToken.network.chainId.toString(),
         banned_dex_ids: bannedDexIds?.length ? bannedDexIds.join(",") : null,
-        amount: options.amountInRaw,
         epsilon: options.epsilon || null,
         max_pairs_count: options.maxPairsCount || null
       }
@@ -58,18 +55,9 @@ export default async function getExchangeRoutes(options: Options): Promise<{ rou
 
   if (!rawRoutes) return { routes: [], percents: [] }
 
-  let plainRoutesList: IBackendRouteStep[][]
+  const _rawRoutes = rawRoutes as BackendResponse.IRoutesResponse
 
-  if (options.amountInRaw) {
-    const _rawRoutes = rawRoutes as BackendResponse.IRoutesResponseNext
-
-    plainRoutesList = _rawRoutes.route
-  }
-  else {
-    const _rawRoutes = rawRoutes as BackendResponse.IRoutesResponse
-
-    plainRoutesList = [..._rawRoutes.items.swap.map(route => [route]), ..._rawRoutes.items.multiswap]
-  }
+  const plainRoutesList = [..._rawRoutes.items.swap.map(route => [route]), ..._rawRoutes.items.multiswap]
 
   if (!plainRoutesList || plainRoutesList.length === 0) return { routes: [], percents: [] }
 

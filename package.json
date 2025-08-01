@@ -60,8 +60,8 @@
     "url": "https://github.com/safeblock-dev/exchange-sdk/issues"
   },
   "homepage": "https://github.com/safeblock-dev/exchange-sdk#readme",
-  "dependencies": {
-    "@safeblock/blockchain-utils": "^1.0.0",
+  "peerDependencies": {
+    "@safeblock/blockchain-utils": "^1.0.2",
     "ethers": "^6.15.0"
   }
 }

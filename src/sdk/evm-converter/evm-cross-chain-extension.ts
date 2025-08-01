@@ -34,6 +34,9 @@ export default class EvmCrossChainExtension {
 
     if (_request instanceof SdkException) return _request
 
+    if (request.tokenIn.network.name === units.name || request.tokensOut.some(token => token.network.name === units.name))
+      return new SdkException("Cross-chain swaps with units network not supported", SdkExceptionCode.InvalidRequest)
+
     if (_request.exactInput) return this.createMultiChainExchangeTransactionLTR(from, _request, taskId)
 
     return this.createMultiChainExchangeTransactionRTL(from, _request, taskId)
@@ -460,7 +463,7 @@ export default class EvmCrossChainExtension {
       )),
       smartRoutingEstimatedGasUsage: smGasUsage.gt(0) ? smGasUsage.toFixed(0) : undefined
     }
-    
+
     return mixin.applyMixin("quotaComputationFinalized", {
       ...rawQuota,
       estimatedGasUsage: ExchangeUtils.computeQuotaExecutionGasUsage(rawQuota, this.mixins)

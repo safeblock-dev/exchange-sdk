@@ -6,7 +6,7 @@ import { SdkConfig } from "~/sdk"
 const contractAddresses = {
   entryPoint: (network: Network, config?: SdkConfig) => selectAddress(network, config?.contractAddresses?.entryPoint ?? {
     default: "0xA5487594bD2303AF225f8c15E80CED0Da883A0E8",
-    [units.name]: "0xA26c8aC451d9EBbd4B40e8D2Ed91f5c55b989001"
+    [units.name]: "0x65DfbA5338137e0De3c7e9C11D9BFEd0B02c33b8"
   }),
 
   quoter: (network: Network, config?: SdkConfig) => selectAddress(network, config?.contractAddresses?.quoter ?? {
@@ -16,7 +16,7 @@ const contractAddresses = {
 
   offchainOracle: (network: Network) => selectAddress(network, {
     [scroll.name]: "0xA2a3F952427c22e208a8298fd2346B8e664964b1",
-    [units.name]: "0x16a35020a2D45f80cc156649D57E4Cc9d4fC74D2",
+    [units.name]: "0xdd4ec4bFecAb02CbE60CdBA8De49821a1105c24f",
     default: "0x00000000000D6FFc74A8feb35aF5827bf57f6786"
   }),
 
