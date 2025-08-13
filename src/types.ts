@@ -175,6 +175,8 @@ export type ExecutorCallData = {
  * Exchange quota
  */
 export interface ExchangeQuota {
+  /** Name of the third party bridge that will execute cross-chain transfer */
+  bridgeLabel?: string
   /** Data for the transactions executed during the swap */
   executorCallData: ExecutorCallData[]
   /** Swap route */
@@ -197,4 +199,36 @@ export interface ExchangeQuota {
   priceImpact: number[]
   /** Estimated gas usage of the smart routing */
   smartRoutingEstimatedGasUsage?: string
+}
+
+export interface AggregationModuleRequestParams {
+  destinationAddress: Address
+  userAddress: Address
+  sourceChainId: number
+  destinationChainId: number
+  inputAmountRaw: string
+  amountLD: string
+  inputToken: BasicToken
+  message: string
+  receiverAddress: string
+  gasLimit: string
+}
+
+export interface AggregationModuleResponse {
+  label: string
+  callData: string,
+  valueToSend: Amount,
+  inputAmount: Amount,
+  outputAmount: Amount,
+  prices: {
+    input: BigNumber,
+    output: BigNumber,
+    impact: number
+  }
+}
+
+export interface AggregationResponse {
+  valueToSend: Amount,
+  bridgeCallData: string,
+  bridgeName: string
 }

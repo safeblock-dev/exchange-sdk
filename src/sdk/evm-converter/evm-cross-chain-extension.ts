@@ -1,17 +1,17 @@
 import { Address, Amount, arrayUtils, units } from "@safeblock/blockchain-utils"
 import BigNumber from "bignumber.js"
-import { AbiCoder, toUtf8Bytes } from "ethers"
-import { BridgeFaucet__factory, CrossCurveFacet__factory, Entrypoint__factory, TransferFaucet__factory } from "~/abis/types"
-import { contractAddresses, stargateNetworksMapping } from "~/config"
+import { AbiCoder } from "ethers"
+import { Entrypoint__factory, TransferFaucet__factory } from "~/abis/types"
+import { contractAddresses } from "~/config"
 import { PriceStorageExtension } from "~/extensions"
 import { SdkConfig } from "~/sdk"
+import aggregateBridges from "~/sdk/bridge-aggregation/aggregate-bridges"
 import evmBuildRawTransaction from "~/sdk/evm-converter/evm-build-raw-transaction"
 import EvmConverter from "~/sdk/evm-converter/evm-converter"
 import { ExchangeUtils } from "~/sdk/exchange-utils"
 import SdkException, { SdkExceptionCode } from "~/sdk/sdk-exception"
 import { SdkMixins } from "~/sdk/sdk-mixins"
-import { BackendResponse, BasicToken, ExchangeQuota, ExchangeRequest, ExecutorCallData, SimulatedRoute } from "~/types"
-import { default as httpRequest } from "~/utils/request"
+import { BasicToken, ExchangeQuota, ExchangeRequest, ExecutorCallData, SimulatedRoute } from "~/types"
 
 interface IBuildCrossChainTransactionOptions {
   sourceChainRoute: SimulatedRoute | null
@@ -185,7 +185,6 @@ export default class EvmCrossChainExtension {
     this.sdkConfig.debugLogListener?.("Build: Preparing for cross-chain transaction final build")
 
     const transferFaucetIface = TransferFaucet__factory.createInterface()
-    const bridgeIface = BridgeFaucet__factory.createInterface()
     const entryPointIface = Entrypoint__factory.createInterface()
     let nativeAmount = new BigNumber(0)
 
@@ -267,84 +266,20 @@ export default class EvmCrossChainExtension {
       sourceChainRoute ? sourceChainRoute.tokensOut.map(t => t.address.toString()) : [fromNetworkUSDC.address.toString()]
     ]))
 
-    if (isUnits) {
-      const unitsResponseA = await httpRequest({
-        base: "https://api.crosscurve.fi",
-        path: "/routing/scan",
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: {
-          params: {
-            chainIdOut: parseInt(request.tokensOut[0].network.chainId.toString()),
-            tokenOut: contractAddresses.usdcParams(request.tokensOut[0].network).address.toString(),
-            chainIdIn: parseInt(request.tokenIn.network.chainId.toString()),
-            amountIn: request.tokenIn.address.equalTo(contractAddresses.usdcParams(request.tokenIn.network).address) ? sourceNetworkSendAmount.toBigNumber().multipliedBy(0.997).toFixed(0) : sourceNetworkSendAmount.toString(),
-            tokenIn: contractAddresses.usdcParams(request.tokenIn.network).address.toString()
-          },
-          slippage: 1
-        }
-      })
+    const aggregationResult = await aggregateBridges(this.parent.sdkInstance, {
+      senderAddress: from,
+      request,
+      destinationChainRoute,
+      destinationNetworkCallData,
+      sdkConfig: this.sdkConfig,
+      sourceChainRoute,
+      sourceNetworkSendAmount
+    })
 
-      if (!unitsResponseA || !unitsResponseA.length) throw new SdkException("Cannot compute cross curve exchange: A", SdkExceptionCode.InternalError)
+    if (aggregationResult instanceof SdkException) return aggregationResult
 
-      const unitsResponseB = await httpRequest({
-        base: "https://api.crosscurve.fi",
-        path: "/estimate",
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: unitsResponseA[0]
-      })
-
-      if (!unitsResponseB) throw new SdkException("Cannot compute cross curve exchange: B", SdkExceptionCode.InternalError)
-
-      const unitsFinalResponse = await httpRequest<BackendResponse.UnitsAPIResponse>({
-        base: "https://api.crosscurve.fi",
-        path: "/tx/create",
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: {
-          from: contractAddresses.entryPoint(request.tokenIn.network, this.sdkConfig),
-          recipient: request.destinationAddress?.toString() || from?.toString(),
-          routing: unitsResponseA[0],
-          estimate: unitsResponseB
-        }
-      })
-
-      if (!unitsFinalResponse) throw new SdkException("Cannot compute cross curve exchange: final", SdkExceptionCode.InternalError)
-
-      const crossCurveIface = CrossCurveFacet__factory.createInterface()
-
-      sourceNetworkCallData.push(
-        crossCurveIface.encodeFunctionData("startCrossCurve", [
-          unitsFinalResponse.args[0],
-          unitsFinalResponse.args[1],
-          unitsFinalResponse.args[2]
-        ])
-      )
-
-      nativeAmount = nativeAmount.plus(unitsFinalResponse.args[2].executionPrice)
-    }
-    else {
-      sourceNetworkCallData.push(
-        mixin.applyMixin("stargateSendV2CallData", (
-          bridgeIface.encodeFunctionData("sendStargateV2", [
-            contractAddresses.stargateUSDCPool(request.tokenIn.network),
-            stargateNetworksMapping(request.tokensOut[0].network),
-            destinationNetworkCallData
-              ? contractAddresses.entryPoint(request.tokensOut[0].network, this.sdkConfig)
-              : (request.destinationAddress || from || Address.zeroAddress).toString(),
-            destinationNetworkCallData ? (450_000 + (150_000 * (destinationChainRoute?.originalRouteSet.flat(1).length ?? 0))) : 0,
-            destinationNetworkCallData || toUtf8Bytes("")
-          ])
-        ))
-      )
-    }
+    sourceNetworkCallData.push(mixin.applyMixin("bridgeTransactionCallData", aggregationResult.bridgeCallData))
+    nativeAmount = nativeAmount.plus(mixin.applyMixin("bridgeTransactionNativeAmount", aggregationResult.valueToSend.toString()))
 
     sourceNetworkCallData.push(mixin.applyMixin("transferDataEncoded", transferData))
 
