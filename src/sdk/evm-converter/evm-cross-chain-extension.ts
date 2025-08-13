@@ -384,6 +384,7 @@ export default class EvmCrossChainExtension {
       .plus(destinationChainRoute?.smartRoutingDetails?.gasUsage || "0")
 
     const rawQuota: Omit<ExchangeQuota, "estimatedGasUsage"> = {
+      bridgeLabel: aggregationResult.bridgeName,
       executorCallData,
       exchangeRoute: arrayUtils.nonNullable([sourceChainRoute?.originalRouteSet, destinationChainRoute?.originalRouteSet]),
       amountsOut: correctedAmountsOut,
