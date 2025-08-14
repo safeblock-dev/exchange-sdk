@@ -125,8 +125,8 @@ export class ExchangeUtils {
       }
     }
 
-    const stargateSwapMessageGasUsage = mixin.applyMixin("stargateSwapMessageGasUsage", 450_000)
-    const stargateHollowMessageGasUsage = mixin.applyMixin("stargateHollowMessageGasUsage", 300_000)
+    const stargateSwapMessageGasUsage = mixin.applyMixin("bridgeSwapMessageGasUsage", 450_000)
+    const stargateHollowMessageGasUsage = mixin.applyMixin("bridgeHollowMessageGasUsage", 300_000)
 
     const receiveNativeAmount = quota.tokensOut.filter(i => i.address.equalTo(Address.zeroAddress)).length
     if (quota.tokenIn.network.name === quota.tokensOut[0].network.name)

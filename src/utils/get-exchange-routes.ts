@@ -1,9 +1,7 @@
 import { Address, arrayUtils } from "@safeblock/blockchain-utils"
-import { BackendResponse, BasicToken, RouteStep } from "~/types"
+import { type BackendResponse, BasicToken, RouteStep } from "~/types"
 import LimitedMap from "~/utils/limited-map"
 import request from "~/utils/request"
-import IRoutesResponse = BackendResponse.IRoutesResponse
-import IRoutesResponseNext = BackendResponse.IRoutesResponseNext
 
 interface Options {
   backendUrl: string
@@ -19,7 +17,7 @@ interface Options {
   signal?: AbortSignal
 }
 
-const routesCache = new LimitedMap<string, IRoutesResponse | IRoutesResponseNext>(10_000)
+const routesCache = new LimitedMap<string, BackendResponse.IRoutesResponse | BackendResponse.IRoutesResponseNext>(10_000)
 
 export default async function getExchangeRoutes(options: Options): Promise<{ routes: RouteStep[][], percents?: string[] }> {
   const { backendUrl, fromToken, toToken, bannedDexIds, headers } = options
@@ -96,6 +94,6 @@ export default async function getExchangeRoutes(options: Options): Promise<{ rou
         return steps as RouteStep[]
       })
     ),
-    percents: (rawRoutes as IRoutesResponseNext).percents || []
+    percents: (rawRoutes as BackendResponse.IRoutesResponseNext).percents || []
   }
 }

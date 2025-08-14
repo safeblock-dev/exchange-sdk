@@ -18,12 +18,13 @@ export interface InternalMixinList extends TMixinList {
       outputAmountsCorrected: [Amount, Amount[]]
       quotaComputationFinalized: ExchangeQuota,
       tokenTransferCallDataFinalized: Promise<string> | string
-      stargateSendV2CallData: string
+      bridgeTransactionCallData: string
+      bridgeTransactionNativeAmount: string
       callOffset: string
     },
     computeQuotaExecutionGasUsage: {
-      stargateSwapMessageGasUsage: number
-      stargateHollowMessageGasUsage: number
+      bridgeSwapMessageGasUsage: number
+      bridgeHollowMessageGasUsage: number
       wrapTransactionGasUsage: number
       unwrapTransactionGasUsage: number
       multiStepExchangeWrapperGasUsage: number
@@ -60,6 +61,7 @@ type MixinStorage<
   callback: (value: InternalMixinList[L][N][E]) => InternalMixinList[L][N][E]
   identifier: string
 }
+
 /**
  * SDK sub‑system that implements mixins
  */
@@ -136,7 +138,8 @@ export class SdkMixins<
         })
 
         return _value
-      } catch {
+      }
+      catch {
         return value
       }
     }
