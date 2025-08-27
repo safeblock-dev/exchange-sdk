@@ -15,7 +15,7 @@ export default async function evmBuildRawTransaction(from: Address, request: Exc
 
   const multiSwapIface = MultiswapRouterFaucet__factory.createInterface()
 
-  const quoterInstance = Quoter__factory.connect(contractAddresses.quoter(request.tokenIn.network, config), ethersProvider(request.tokenIn.network))
+  const quoterInstance = Quoter__factory.connect(contractAddresses.quoter(route.tokenIn.network, config), ethersProvider(route.tokenIn.network))
 
   let multiSwapData: string
   let amountIn: Amount = request.amountIn
@@ -46,7 +46,7 @@ export default async function evmBuildRawTransaction(from: Address, request: Exc
       const quoterResponse = await quoterInstance.multiswap2Reverse({
         fullAmount: "0",
         amountInPercentages: route.tokensOut.map(token => Address.requireWrapped(token.address, token.network).toString()),
-        minAmountsOut: request.amountsOut.map(amount => amount.toString()),
+        minAmountsOut: route.amountsOut.map(amount => amount.toString()),
         tokenIn: Address.requireWrapped(route.tokenIn.address, route.tokenIn.network).toString(),
         tokensOut: route.tokensOut.map(token => Address.requireWrapped(token.address, token.network).toString()),
         pairs: pairsHex
@@ -62,7 +62,7 @@ export default async function evmBuildRawTransaction(from: Address, request: Exc
           pairs: pairsHex,
           tokensIn: [Address.requireWrapped(route.tokenIn.address, route.tokenIn.network).toString()],
           tokensOut: route.tokensOut.map(token => Address.requireWrapped(token.address, token.network).toString()),
-          amountsOut: request.amountsOut.map(amount => amount.toString())
+          amountsOut: route.amountsOut.map(amount => amount.toString())
         }
       ])
     }
