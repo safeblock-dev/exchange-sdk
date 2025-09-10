@@ -36,22 +36,6 @@
     "type": "error"
   },
   {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "expectedGreaterValue",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "expectedLowerBalance",
-        "type": "uint256"
-      }
-    ],
-    "name": "ValueLowerThanExpected",
-    "type": "error"
-  },
-  {
     "anonymous": false,
     "inputs": [
       {
@@ -157,6 +141,45 @@
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "poolAddress",
+        "type": "address"
+      },
+      {
+        "internalType": "uint32",
+        "name": "dstEid",
+        "type": "uint32"
+      },
+      {
+        "internalType": "address",
+        "name": "receiver",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "tokenOut",
+        "type": "address"
+      },
+      {
+        "internalType": "bytes",
+        "name": "extraData",
+        "type": "bytes"
+      }
+    ],
+    "name": "sendStargate",
+    "outputs": [
+      {
+        "internalType": "bytes32[]",
+        "name": "tokensAndAmounts",
+        "type": "bytes32[]"
+      }
+    ],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {

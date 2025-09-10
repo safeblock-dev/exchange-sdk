@@ -95,7 +95,8 @@ export default async function acrossAggregationModule(sdk: SdkCore, params: Aggr
     quoteTimestamp: suggestedFee.timestamp,
     fillDeadline: suggestedFee.fillDeadline,
     exclusivityDeadline: suggestedFee.exclusivityDeadline,
-    message: params.message.length > 2 ? ("0x" + params.message.slice(130 + 128)) : params.message
+    //message: params.message.length > 2 ? ("0x" + params.message.slice(130 + 128)) : params.message,
+    message: ""
   }])
 
   const inputAmount = Amount.from(params.inputAmountRaw, params.inputToken.decimals, false)

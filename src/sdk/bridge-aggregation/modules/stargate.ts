@@ -1,17 +1,22 @@
 import { Address, Amount, ethersProvider, networksList } from "@safeblock/blockchain-utils"
 import BigNumber from "bignumber.js"
-import { BridgeFaucet__factory } from "~/abis/types"
+import { AbiCoder } from "ethers"
+import { BridgeFaucet__factory, TransferFaucet__factory } from "~/abis/types"
 import { contractAddresses, stargateNetworksMapping } from "~/config"
 import { PriceStorageExtension } from "~/extensions"
 import SdkCore from "~/sdk/sdk-core"
 import SdkException, { SdkExceptionCode } from "~/sdk/sdk-exception"
 import { AggregationModuleRequestParams, AggregationModuleResponse } from "~/types"
+import messageQuoter from "~/utils/message-quoter"
 
 export default async function stargateAggregationModule(
   sdk: SdkCore,
   params: AggregationModuleRequestParams
 ): Promise<SdkException | AggregationModuleResponse> {
   const priceStorage = sdk.extension(PriceStorageExtension)
+
+  if (params.outputTokens.length !== 1)
+    return new SdkException("Invalid number of output tokens", SdkExceptionCode.InvalidRequest)
 
   const bridgeIface = BridgeFaucet__factory.createInterface()
 
@@ -47,12 +52,32 @@ export default async function stargateAggregationModule(
 
   const entryPoint = BridgeFaucet__factory.connect(contractAddresses.entryPoint(srcNet), ethersProvider(srcNet))
 
-  const callData = bridgeIface.encodeFunctionData("sendStargateV2", [
+  const transferFacetIface = TransferFaucet__factory.createInterface()
+
+  let extraData: string
+
+  if (params.outputTokens[0].address.equalTo(Address.zeroAddress)) {
+    extraData = AbiCoder.defaultAbiCoder().encode(["bytes[]"], [
+      transferFacetIface.encodeFunctionData("unwrapNativeAndTransferTo", [params.receiverAddress])
+    ])
+  }
+  else {
+    extraData = AbiCoder.defaultAbiCoder().encode(["bytes[]"], [
+      transferFacetIface.encodeFunctionData("transferToken", [
+        params.receiverAddress,
+        params.outputTokens.map(t => t.address.toString())
+      ])
+    ])
+  }
+
+  const callData = bridgeIface.encodeFunctionData("sendStargate", [
     contractAddresses.stargateUSDCPool(srcNet),
     stargateNetworksMapping(dstNet),
-    params.receiverAddress,
-    parseInt(params.gasLimit),
-    params.message
+    params.outputTokens[0].address.equalTo(contractAddresses.usdcParams(dstNet).address)
+      ? params.receiverAddress
+      : Address.zeroAddress.toString(),
+    contractAddresses.usdcParams(dstNet).address,
+    extraData
   ])
 
   const { valueToSend, dstAmount } = await entryPoint.quoteV2(
@@ -60,8 +85,8 @@ export default async function stargateAggregationModule(
     stargateNetworksMapping(dstNet),
     params.inputAmountRaw,
     params.receiverAddress,
-    params.message,
-    parseInt(params.gasLimit)
+    "0x",
+    0
   )
 
   const inputAmount = Amount.from(params.inputAmountRaw, params.inputToken.decimals, false)
@@ -76,9 +101,15 @@ export default async function stargateAggregationModule(
   const totalInputUSD = inputAmountUSD.plus(inputNativeAmountUSD)
   const priceImpact = new BigNumber(100).minus(outputAmountUSD.dividedBy(totalInputUSD).multipliedBy(100)).dp(5).toNumber()
 
+  const extraNative = await messageQuoter(
+    srcNet,
+    stargateNetworksMapping(dstNet),
+    extraData
+  )
+
   return {
     callData,
-    valueToSend: Amount.from(valueToSend, 18, false),
+    valueToSend: Amount.from(new BigNumber(valueToSend.toString()).plus(extraNative.toString()).toString(), 18, false),
     inputAmount: inputAmount,
     outputAmount: outputAmount,
     label: "stargate",
