@@ -16,7 +16,7 @@ interface BridgingDetails {
   sdkConfig: SdkConfig
 }
 
-export default async function aggregateBridges(sdk: SdkCore, options: BridgingDetails): Promise<AggregationResponse | SdkException> {
+export default async function aggregateBridges(sdk: SdkCore, sdkConfig: SdkConfig, options: BridgingDetails): Promise<AggregationResponse | SdkException> {
   const fromNetworkUSDC = contractAddresses.usdcParams(options.request.tokenIn.network)
 
   const amountLD = !Address.equal(options.request.tokenIn.address, fromNetworkUSDC.address) ? "0" : Amount
@@ -31,7 +31,7 @@ export default async function aggregateBridges(sdk: SdkCore, options: BridgingDe
 
   options.sdkConfig.debugLogListener?.("BridgeAggregation: Sending request to bridge aggregator...")
 
-  const aggregationResult = await aggregate(sdk, {
+  const aggregationResult = await aggregate(sdk, sdkConfig, {
     destinationAddress: (options.request.destinationAddress ?? options.senderAddress),
     userAddress: options.senderAddress,
     inputAmountRaw: Amount.select(options.sourceChainRoute?.amountsOut?.[0], options.sourceNetworkSendAmount)!.toString(),
@@ -100,12 +100,12 @@ export default async function aggregateBridges(sdk: SdkCore, options: BridgingDe
   }
 }
 
-async function aggregate(sdk: SdkCore, options: AggregationModuleRequestParams) {
+async function aggregate(sdk: SdkCore, sdkConfig: SdkConfig, options: AggregationModuleRequestParams) {
   const [stargate] = await Promise.all([
     //acrossAggregationModule(sdk, options).catch((e: any) => {
     //  return new SdkException(e?.message || "Failed to process across bridge", SdkExceptionCode.InternalError)
     //}),
-    stargateAggregationModule(sdk, options).catch((e: any) => {
+    stargateAggregationModule(sdk, sdkConfig, options).catch((e: any) => {
       return new SdkException(e?.message || "Failed to process stargate bridge", SdkExceptionCode.InternalError)
     })
   ])

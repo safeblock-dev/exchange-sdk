@@ -2,9 +2,9 @@ import { Address } from "@safeblock/blockchain-utils"
 import BigNumber from "bignumber.js"
 import { ethers, JsonRpcSigner } from "ethers"
 import SdkCore, { type SdkConfig } from "~/sdk/sdk-core"
+import SdkException, { SdkExceptionCode } from "~/sdk/sdk-exception"
 import { ExtractConfigExtensionsType } from "~/sdk/sdk-extension"
 import { ExchangeRequest, ExecutorCallData } from "~/types"
-import SdkException, { SdkExceptionCode } from "~/sdk/sdk-exception"
 
 
 type GenericBlacklist<I extends string, S extends string> = Array<{ [key: string]: any } & { [key in I]: string } & { [key in S]: boolean }>
@@ -87,7 +87,10 @@ export default class SafeBlock<Configuration extends SdkConfig = SdkConfig> exte
 
     if (content instanceof SdkException) return content
 
-    this.sdkConfig.debugLogListener?.(`Quota: Built: ${ JSON.stringify(content.executorCallData.map(c => ({ data: c.callData, value: c.value?.toString() }))) }`)
+    this.sdkConfig.debugLogListener?.(`Quota: Built: ${ JSON.stringify(content.executorCallData.map(c => ({
+      data: c.callData,
+      value: c.value?.toString()
+    }))) }`)
 
     return content
   }

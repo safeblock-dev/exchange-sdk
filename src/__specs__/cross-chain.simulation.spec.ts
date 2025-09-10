@@ -31,7 +31,7 @@ describe("Single chain simulation", async () => {
   const createRequest = async (tokensOut: BasicToken[], percents: number[]) => {
     const request: ExchangeRequest = {
       exactInput: true,
-      amountIn: new Amount(1, 18, true),
+      amountIn: new Amount(0.1, 18, true),
       amountsOut: Array(tokensOut.length).fill(amountOutInitial),
       amountOutReadablePercentages: percents,
       tokenIn: bnbBNB,

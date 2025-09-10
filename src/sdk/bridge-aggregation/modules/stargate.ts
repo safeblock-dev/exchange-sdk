@@ -4,19 +4,17 @@ import { AbiCoder } from "ethers"
 import { BridgeFaucet__factory, TransferFaucet__factory } from "~/abis/types"
 import { contractAddresses, stargateNetworksMapping } from "~/config"
 import { PriceStorageExtension } from "~/extensions"
-import SdkCore from "~/sdk/sdk-core"
+import SdkCore, { SdkConfig } from "~/sdk/sdk-core"
 import SdkException, { SdkExceptionCode } from "~/sdk/sdk-exception"
 import { AggregationModuleRequestParams, AggregationModuleResponse } from "~/types"
 import messageQuoter from "~/utils/message-quoter"
 
 export default async function stargateAggregationModule(
   sdk: SdkCore,
+  sdkConfig: SdkConfig,
   params: AggregationModuleRequestParams
 ): Promise<SdkException | AggregationModuleResponse> {
   const priceStorage = sdk.extension(PriceStorageExtension)
-
-  if (params.outputTokens.length !== 1)
-    return new SdkException("Invalid number of output tokens", SdkExceptionCode.InvalidRequest)
 
   const bridgeIface = BridgeFaucet__factory.createInterface()
 
@@ -54,21 +52,30 @@ export default async function stargateAggregationModule(
 
   const transferFacetIface = TransferFaucet__factory.createInterface()
 
-  let extraData: string
+  const dataToEncode: string[] = []
 
-  if (params.outputTokens[0].address.equalTo(Address.zeroAddress)) {
-    extraData = AbiCoder.defaultAbiCoder().encode(["bytes[]"], [
-      transferFacetIface.encodeFunctionData("unwrapNativeAndTransferTo", [params.receiverAddress])
-    ])
+  if (params.outputTokens.some(a => a.address.equalTo(Address.zeroAddress))) {
+    dataToEncode.push(transferFacetIface.encodeFunctionData("unwrapNativeAndTransferTo", [params.receiverAddress]))
+    if (params.outputTokens.length > 1) {
+      dataToEncode.push(
+        transferFacetIface.encodeFunctionData("transferToken", [
+          params.receiverAddress,
+          params.outputTokens.map(t => t.address.toString())
+            .filter(a => !Address.equal(a, Address.zeroAddress))
+        ])
+      )
+    }
   }
   else {
-    extraData = AbiCoder.defaultAbiCoder().encode(["bytes[]"], [
+    dataToEncode.push(
       transferFacetIface.encodeFunctionData("transferToken", [
         params.receiverAddress,
         params.outputTokens.map(t => t.address.toString())
       ])
-    ])
+    )
   }
+
+  const extraData = AbiCoder.defaultAbiCoder().encode(["bytes[]"], [dataToEncode])
 
   const callData = bridgeIface.encodeFunctionData("sendStargate", [
     contractAddresses.stargateUSDCPool(srcNet),
@@ -101,11 +108,15 @@ export default async function stargateAggregationModule(
   const totalInputUSD = inputAmountUSD.plus(inputNativeAmountUSD)
   const priceImpact = new BigNumber(100).minus(outputAmountUSD.dividedBy(totalInputUSD).multipliedBy(100)).dp(5).toNumber()
 
+
   const extraNative = await messageQuoter(
     srcNet,
+    sdkConfig,
     stargateNetworksMapping(dstNet),
     extraData
   )
+
+  if (extraNative instanceof SdkException) return extraNative
 
   return {
     callData,
