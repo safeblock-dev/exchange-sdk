@@ -119,6 +119,11 @@ const sdkConfig: SdkConfig = {
   backend: {
     url: "https://api.safeblock.cc"
   },
+  contractAddresses: {
+    entryPoint: {
+      default: "0x27d6b06f29802a19c6c1216D540758f32ebD8dE6"
+    }
+  },
   extensions: env => [
     new TokensListExtension(env.sdk, env.eventBus, tokensListExtensionConfig),
     new PriceStorageExtension(env.sdk, env.eventBus, {

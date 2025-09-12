@@ -209,20 +209,19 @@ export interface AggregationModuleRequestParams {
   inputAmountRaw: string
   amountLD: string
   inputToken: BasicToken
-  message: string
   receiverAddress: string
-  gasLimit: string
+  outputTokens: BasicToken[]
 }
 
 export interface AggregationModuleResponse {
   label: string
-  callData: string,
-  valueToSend: Amount,
-  inputAmount: Amount,
-  outputAmount: Amount,
+  callData: string
+  valueToSend: Amount
+  inputAmount: Amount
+  outputAmount: Amount
   prices: {
-    input: BigNumber,
-    output: BigNumber,
+    input: BigNumber
+    output: BigNumber
     impact: number
   }
 }

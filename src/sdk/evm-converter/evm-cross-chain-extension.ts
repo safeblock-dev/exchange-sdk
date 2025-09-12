@@ -266,7 +266,7 @@ export default class EvmCrossChainExtension {
       sourceChainRoute ? sourceChainRoute.tokensOut.map(t => t.address.toString()) : [fromNetworkUSDC.address.toString()]
     ]))
 
-    const aggregationResult = await aggregateBridges(this.parent.sdkInstance, {
+    const aggregationResult = await aggregateBridges(this.parent.sdkInstance, this.sdkConfig, {
       senderAddress: from,
       request,
       destinationChainRoute,

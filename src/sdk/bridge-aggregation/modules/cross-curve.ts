@@ -3,8 +3,6 @@ import SdkException, { SdkExceptionCode } from "~/sdk/sdk-exception"
 import { AggregationModuleRequestParams } from "~/types"
 
 export default async function crossCurveAggregationModule(sdk: SdkCore, params: AggregationModuleRequestParams) {
-  console.log(sdk, params)
-
   return new SdkException("Not implemented", SdkExceptionCode.InternalError)
 
   /*
