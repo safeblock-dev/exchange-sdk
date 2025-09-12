@@ -6,7 +6,7 @@ import SafeBlockSDK from "~/sdk"
 import SdkException, { SdkExceptionCode } from "~/sdk/sdk-exception"
 import { BasicToken, ExchangeRequest } from "~/types"
 
-describe("Single chain simulation", async () => {
+describe("Cross chain simulation", async () => {
   const sdk = new SafeBlockSDK({
     ...sdkConfig,
     contractAddresses: {

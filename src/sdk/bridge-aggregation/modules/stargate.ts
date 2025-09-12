@@ -1,12 +1,12 @@
 import { Address, Amount, ethersProvider, networksList } from "@safeblock/blockchain-utils"
 import BigNumber from "bignumber.js"
-import { AbiCoder } from "ethers"
-import { BridgeFaucet__factory, TransferFaucet__factory } from "~/abis/types"
+import { BridgeFaucet__factory } from "~/abis/types"
 import { contractAddresses, stargateNetworksMapping } from "~/config"
 import { PriceStorageExtension } from "~/extensions"
 import SdkCore, { SdkConfig } from "~/sdk/sdk-core"
 import SdkException, { SdkExceptionCode } from "~/sdk/sdk-exception"
 import { AggregationModuleRequestParams, AggregationModuleResponse } from "~/types"
+import buildExtraData from "~/utils/build-extra-data"
 import messageQuoter from "~/utils/message-quoter"
 
 export default async function stargateAggregationModule(
@@ -50,32 +50,7 @@ export default async function stargateAggregationModule(
 
   const entryPoint = BridgeFaucet__factory.connect(contractAddresses.entryPoint(srcNet), ethersProvider(srcNet))
 
-  const transferFacetIface = TransferFaucet__factory.createInterface()
-
-  const dataToEncode: string[] = []
-
-  if (params.outputTokens.some(a => a.address.equalTo(Address.zeroAddress))) {
-    dataToEncode.push(transferFacetIface.encodeFunctionData("unwrapNativeAndTransferTo", [params.receiverAddress]))
-    if (params.outputTokens.length > 1) {
-      dataToEncode.push(
-        transferFacetIface.encodeFunctionData("transferToken", [
-          params.receiverAddress,
-          params.outputTokens.map(t => t.address.toString())
-            .filter(a => !Address.equal(a, Address.zeroAddress))
-        ])
-      )
-    }
-  }
-  else {
-    dataToEncode.push(
-      transferFacetIface.encodeFunctionData("transferToken", [
-        params.receiverAddress,
-        params.outputTokens.map(t => t.address.toString())
-      ])
-    )
-  }
-
-  const extraData = AbiCoder.defaultAbiCoder().encode(["bytes[]"], [dataToEncode])
+  const extraData = buildExtraData(params)
 
   const callData = bridgeIface.encodeFunctionData("sendStargate", [
     contractAddresses.stargateUSDCPool(srcNet),

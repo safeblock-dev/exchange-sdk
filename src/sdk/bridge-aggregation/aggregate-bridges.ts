@@ -1,10 +1,12 @@
 import { Address, Amount } from "@safeblock/blockchain-utils"
 import { contractAddresses } from "~/config"
 import { SdkConfig } from "~/sdk"
+import acrossAggregationModule from "~/sdk/bridge-aggregation/modules/across"
+import celerAggregationModule from "~/sdk/bridge-aggregation/modules/celer"
 import stargateAggregationModule from "~/sdk/bridge-aggregation/modules/stargate"
 import SdkCore from "~/sdk/sdk-core"
 import SdkException, { SdkExceptionCode } from "~/sdk/sdk-exception"
-import { AggregationModuleRequestParams, AggregationResponse, ExchangeRequest, SimulatedRoute } from "~/types"
+import { AggregationModuleRequestParams, AggregationModuleResponse, AggregationResponse, ExchangeRequest, SimulatedRoute } from "~/types"
 
 interface BridgingDetails {
   senderAddress: Address
@@ -101,25 +103,35 @@ export default async function aggregateBridges(sdk: SdkCore, sdkConfig: SdkConfi
 }
 
 async function aggregate(sdk: SdkCore, sdkConfig: SdkConfig, options: AggregationModuleRequestParams) {
-  const [stargate] = await Promise.all([
-    //acrossAggregationModule(sdk, options).catch((e: any) => {
-    //  return new SdkException(e?.message || "Failed to process across bridge", SdkExceptionCode.InternalError)
-    //}),
+  const bridgeResponses = await Promise.all([
+    acrossAggregationModule(sdk, sdkConfig, options).catch((e: any) => {
+      return new SdkException(e?.message || "Failed to process across bridge", SdkExceptionCode.InternalError)
+    }),
     stargateAggregationModule(sdk, sdkConfig, options).catch((e: any) => {
       return new SdkException(e?.message || "Failed to process stargate bridge", SdkExceptionCode.InternalError)
+    }),
+    celerAggregationModule(sdk, sdkConfig, options).catch((e: any) => {
+      return new SdkException(e?.message || "Failed to process celer bridge", SdkExceptionCode.InternalError)
     })
   ])
 
-  return stargate
+  if (bridgeResponses.every(r => r instanceof SdkException)) {
+    return new SdkException(`Failed to process all bridges: [${ bridgeResponses.map(b => (b as SdkException).message).join(", ") }]`,
+      SdkExceptionCode.InternalError)
+  }
 
-  //if (across instanceof SdkException && stargate instanceof SdkException) {
-  //  return new SdkException(`Failed to process both bridges: [${ [across.message, stargate.message].join(", ") }]`,
-  //    SdkExceptionCode.InternalError)
-  //}
-  //
-  //if (across instanceof SdkException) return stargate
-  //if (stargate instanceof SdkException) return across
-  //
-  //if (across.prices.impact > stargate.prices.impact) return stargate
-  //return across
+  const successBridges = bridgeResponses
+    .filter(b => !(b instanceof SdkException)) as AggregationModuleResponse[]
+  
+  if (successBridges.length === 0) {
+    return new SdkException("Failed to process any bridges: without error messages", SdkExceptionCode.InternalError)
+  }
+
+  const sortedOutput = successBridges
+    .sort((a, b) => a.prices.impact - b.prices.impact)
+    .at(0)
+
+  if (!sortedOutput) return new SdkException("Failed to process any bridges: without error messages", SdkExceptionCode.InternalError)
+
+  return sortedOutput
 }

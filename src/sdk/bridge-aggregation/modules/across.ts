@@ -1,15 +1,22 @@
 import { Address, Amount, networksList } from "@safeblock/blockchain-utils"
 import BigNumber from "bignumber.js"
 import { AcrossABI__factory } from "~/abis/types"
+import { contractAddresses, stargateNetworksMapping } from "~/config"
 import { PriceStorageExtension } from "~/extensions"
 import { AcrossTokenDetails, SuggestedFeeApiResponse } from "~/sdk/bridge-aggregation/modules/across.types"
-import SdkCore from "~/sdk/sdk-core"
+import SdkCore, { SdkConfig } from "~/sdk/sdk-core"
 import SdkException, { SdkExceptionCode } from "~/sdk/sdk-exception"
 import { AggregationModuleRequestParams, AggregationModuleResponse } from "~/types"
+import buildExtraData from "~/utils/build-extra-data"
+import messageQuoter from "~/utils/message-quoter"
 
 let tokenManifestCache: Map<string, AcrossTokenDetails[]> = new Map()
 
-export default async function acrossAggregationModule(sdk: SdkCore, params: AggregationModuleRequestParams): Promise<SdkException | AggregationModuleResponse> {
+export default async function acrossAggregationModule(
+  sdk: SdkCore,
+  sdkConfig: SdkConfig,
+  params: AggregationModuleRequestParams
+): Promise<SdkException | AggregationModuleResponse> {
   const urlParams = new URLSearchParams()
 
   let acrossToken: AcrossTokenDetails | null = null
@@ -68,6 +75,7 @@ export default async function acrossAggregationModule(sdk: SdkCore, params: Aggr
   urlParams.set("outputToken", acrossToken.destinationToken)
   urlParams.set("originChainId", params.sourceChainId.toString())
   urlParams.set("destinationChainId", params.destinationChainId.toString())
+  urlParams.set("allowUnmatchedDecimals", "true")
   urlParams.set("amount", params.inputAmountRaw)
 
   const baseURL = "https://app.across.to/api"
@@ -84,10 +92,14 @@ export default async function acrossAggregationModule(sdk: SdkCore, params: Aggr
 
   const acrossContractIface = AcrossABI__factory.createInterface()
 
-  const callData = acrossContractIface.encodeFunctionData("sendAcrossDepositV3", [{
-    recipient: params.receiverAddress,
+  const extraData = buildExtraData(params)
+
+  const callData = acrossContractIface.encodeFunctionData("sendAcrossDeposit", [{
+    recipient: params.outputTokens[0].address.equalTo(contractAddresses.usdcParams(dstNet).address)
+      ? params.receiverAddress
+      : Address.zeroAddress.toString(),
     inputToken: params.inputToken.address.toString(),
-    outputToken: acrossToken.destinationToken,
+    outputToken: suggestedFee.outputToken.address,
     inputAmount: params.inputAmountRaw,
     outputAmountPercent: BigInt(1e18) - BigInt(String(suggestedFee.totalRelayFee.pct)),
     destinationChainId: params.destinationChainId.toString(),
@@ -95,19 +107,30 @@ export default async function acrossAggregationModule(sdk: SdkCore, params: Aggr
     quoteTimestamp: suggestedFee.timestamp,
     fillDeadline: suggestedFee.fillDeadline,
     exclusivityDeadline: suggestedFee.exclusivityDeadline,
-    //message: params.message.length > 2 ? ("0x" + params.message.slice(130 + 128)) : params.message,
-    message: ""
+    dstEid: stargateNetworksMapping(dstNet),
+    extraData
   }])
 
   const inputAmount = Amount.from(params.inputAmountRaw, params.inputToken.decimals, false)
-  const outputAmount = Amount.from(suggestedFee.outputAmount, params.inputToken.decimals, false)
+  const outputAmount = Amount.from(suggestedFee.outputAmount, suggestedFee.outputToken.decimals, false)
 
   const inputAmountUSD = inputAmount.toReadableBigNumber().multipliedBy(srcTokenPrice.toReadableBigNumber())
   const outputAmountUSD = outputAmount.toReadableBigNumber().multipliedBy(dstTokenPrice.toReadableBigNumber())
 
+  const nativeAmount = new BigNumber(Address.equal(params.inputToken.address, Address.zeroAddress) ? params.inputAmountRaw : "0")
+
+  const extraNative = await messageQuoter(
+    srcNet,
+    sdkConfig,
+    stargateNetworksMapping(dstNet),
+    extraData
+  )
+
+  if (extraNative instanceof SdkException) return extraNative
+
   return {
     callData,
-    valueToSend: Amount.from(Address.equal(params.inputToken.address, Address.zeroAddress) ? params.inputAmountRaw : "0", 18, false),
+    valueToSend: Amount.from(nativeAmount.plus(extraNative).toFixed(0), 18, false),
     inputAmount: inputAmount,
     outputAmount: outputAmount,
     label: "across",
